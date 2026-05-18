@@ -1,0 +1,33 @@
+# Core Dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.23.0
+pandas>=1.5.0
+
+# Data Processing
+Pillow>=9.0.0
+scipy>=1.10.0
+
+# Model & Training
+pytorch-lightning>=2.0.0
+timm>=0.9.0  # PyTorch Image Models (for ResNet backbones)
+
+# Meta-Learning & Loss Functions
+scikit-learn>=1.3.0
+tensorboard>=2.13.0
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Jupyter & Notebooks
+jupyter>=1.0.0
+notebook>=6.5.0
+ipywidgets>=8.0.0
+
+# Development
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0

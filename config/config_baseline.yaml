@@ -1,0 +1,39 @@
+# Baseline Configuration - ResNet + Cross-Entropy
+
+# Dataset
+dataset:
+  name: "ImageNet-LT"
+  data_dir: "./data/ImageNet-LT"
+  num_classes: 1000
+  train_split: 0.8
+  
+# Model Architecture
+model:
+  backbone: "resnet50"
+  pretrained: true
+  num_features: 2048
+  num_classes: 1000
+  
+# Training
+training:
+  epochs: 100
+  batch_size: 128
+  learning_rate: 0.1
+  weight_decay: 5e-4
+  momentum: 0.9
+  scheduler: "cosine"
+  
+# Loss
+loss:
+  name: "cross_entropy"
+  
+# Evaluation
+evaluation:
+  eval_interval: 10
+  save_best: true
+  metrics: ["accuracy", "many_accuracy", "med_accuracy", "few_accuracy", "g_mean"]
+
+# Device
+device: "cuda"
+num_workers: 8
+seed: 42

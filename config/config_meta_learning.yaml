@@ -1,0 +1,59 @@
+# Meta-Learning Configuration - Prototype Head + Episodic Training
+
+# Dataset
+dataset:
+  name: "ImageNet-LT"
+  data_dir: "./data/ImageNet-LT"
+  num_classes: 1000
+  train_split: 0.8
+  
+# Model Architecture
+model:
+  backbone: "resnet50"
+  pretrained: true
+  num_features: 2048
+  num_classes: 1000
+  prototype_dim: 256
+  
+# Meta-Learning
+meta_learning:
+  enabled: true
+  episodic_training: true
+  episode_size: 5  # 5-way
+  support_shot: 5  # 5-shot
+  query_shot: 15   # 15-query
+  episodes_per_epoch: 100
+  
+# Prototype Learning
+prototype:
+  enabled: true
+  distance_metric: "euclidean"
+  
+# Meta-Weighting
+meta_weighting:
+  enabled: true
+  weight_net_dim: 256
+  
+# Training
+training:
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.001
+  weight_decay: 5e-4
+  scheduler: "cosine"
+  
+# Loss
+loss:
+  name: "prototype_loss"
+  margin: 1.0
+  
+# Evaluation
+evaluation:
+  eval_interval: 10
+  save_best: true
+  metrics: ["accuracy", "many_accuracy", "med_accuracy", "few_accuracy", "g_mean"]
+
+# Device
+device: "cuda"
+num_workers: 8
+seed: 42
