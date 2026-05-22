@@ -130,7 +130,10 @@ dmypy.json
 *~
 
 # Data & Results
-data/
+data/*
+!data/*.py
+!data/*.md
+!data/__init__.py
 results/
 *.pkl
 *.pth
