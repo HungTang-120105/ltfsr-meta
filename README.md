@@ -28,9 +28,8 @@
 ## Dataset
 
 ### Các dataset sử dụng
-- **ImageNet-LT:** Phiên bản long-tail của ImageNet với 1,000 lớp, phân bố theo quy luật lũy thừa.
-- **Places-LT:** Phiên bản long-tail của Places365 dataset (scene recognition).
-- **CelebA-Spoof:** Dataset gian lận nhận dạng khuôn mặt với phân bố không cân bằng.
+- **CIFAR-100-LT:** Bản long-tail của CIFAR-100, phù hợp để thử nghiệm nhẹ và lặp nhanh.
+- **mini-ImageNet-LT:** Bản long-tail của mini-ImageNet, phù hợp cho few-shot và meta-learning.
 
 ### Quy tắc phân chia lớp
 - **Head classes:** > 100 mẫu/lớp
@@ -135,7 +134,16 @@ pip install -r requirements.txt
 
 ### 2. Chuẩn bị Dataset
 ```bash
-python data/prepare_datasets.py --dataset ImageNet-LT --data_dir /path/to/data
+python data/prepare_datasets.py --dataset CIFAR-100-LT --data_dir ./data/CIFAR-100-LT
+```
+
+Script sẽ tự tải CIFAR-100 từ torchvision, sau đó dựng split long-tail và xuất ra thư mục `train/` và `test/`.
+
+Nếu muốn chuẩn bị mini-ImageNet-LT từ file nén hoặc link tải sẵn có, dùng:
+
+```bash
+python data/prepare_datasets.py --dataset mini-ImageNet-LT --data_dir ./data/mini-ImageNet-LT --download_url <dataset_url>
+python data/prepare_datasets.py --dataset mini-ImageNet-LT --data_dir ./data/mini-ImageNet-LT --archive /path/to/mini-ImageNet-LT.tar.gz
 ```
 
 ### 3. Chạy Baseline
@@ -155,6 +163,6 @@ python training/trainer.py --config config/config_full_model.yaml --output_dir r
 
 ### 6. Đánh giá & Ablation Study
 ```bash
-python evaluation/evaluate.py --checkpoint results/full_model/best_model.pth --dataset ImageNet-LT
-python evaluation/ablation_study.py --dataset ImageNet-LT
+python evaluation/evaluate.py --checkpoint results/full_model/best_model.pth --dataset CIFAR-100-LT
+python evaluation/ablation_study.py --dataset CIFAR-100-LT
 ```

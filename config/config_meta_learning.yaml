@@ -2,17 +2,17 @@
 
 # Dataset
 dataset:
-  name: "ImageNet-LT"
-  data_dir: "./data/ImageNet-LT"
-  num_classes: 1000
+  name: "CIFAR-100-LT"
+  data_dir: "./data/CIFAR-100-LT"
+  num_classes: 100
   train_split: 0.8
   
 # Model Architecture
 model:
-  backbone: "resnet50"
+  backbone: "resnet18"
   pretrained: true
-  num_features: 2048
-  num_classes: 1000
+  num_features: 512
+  num_classes: 100
   prototype_dim: 256
   
 # Meta-Learning
