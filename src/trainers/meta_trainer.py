@@ -79,7 +79,8 @@ def train_meta(
     monitor_index = build_class_index([label for _, label in monitor_dataset.samples])
 
     history: list[dict] = []
-    best_accuracy = 0.0
+    # Below zero so the first epoch always writes a checkpoint (see classifier.py).
+    best_accuracy = -1.0
     checkpoint_path = Path(run_dir) / "best_model.pt"
 
     for epoch in range(1, epochs + 1):
@@ -107,14 +108,14 @@ def train_meta(
             "val_accuracy": val_accuracy,
             "learning_rate": current_lr,
         })
-        print(f"Epoch {epoch:03d}/{epochs:03d} | "
-              f"train_loss={history[-1]['train_loss']:.4f} train_acc={history[-1]['train_accuracy']:.4f} | "
-              f"val_acc={val_accuracy:.4f} | best={best_accuracy:.4f}")
-
         if val_accuracy > best_accuracy:
             best_accuracy = val_accuracy
             torch.save({"epoch": epoch, "model_state_dict": encoder.state_dict(),
                         "val_accuracy": best_accuracy}, checkpoint_path)
+
+        print(f"Epoch {epoch:03d}/{epochs:03d} | "
+              f"train_loss={history[-1]['train_loss']:.4f} train_acc={history[-1]['train_accuracy']:.4f} | "
+              f"val_acc={val_accuracy:.4f} | best={max(best_accuracy, 0.0):.4f}")
 
     encoder.load_state_dict(torch.load(checkpoint_path, map_location=device)["model_state_dict"])
     return encoder, pd.DataFrame(history)

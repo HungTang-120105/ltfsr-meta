@@ -101,7 +101,14 @@ def plot_tsne(features: np.ndarray, labels: np.ndarray, out_dir: Path, max_point
         keep = np.random.choice(len(features), size=max_points, replace=False)
         features, labels = features[keep], labels[keep]
 
-    embedding = TSNE(n_components=2, init="pca", learning_rate="auto").fit_transform(features)
+    # t-SNE needs perplexity < n_samples; cap it so small (e.g. smoke-test) sets
+    # don't crash, and skip entirely when there are too few points to embed.
+    n_samples = len(features)
+    if n_samples < 3:
+        return None
+    perplexity = min(30, n_samples - 1)
+    embedding = TSNE(n_components=2, init="pca", learning_rate="auto",
+                     perplexity=perplexity).fit_transform(features)
     fig, ax = plt.subplots(figsize=(8, 7))
     scatter = ax.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap="tab20", s=6, alpha=0.7)
     ax.set_title("t-SNE of learned features")

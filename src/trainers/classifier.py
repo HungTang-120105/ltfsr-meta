@@ -40,7 +40,10 @@ def fit_classifier(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(epochs, 1))
 
     history: list[dict] = []
-    best_val_accuracy = 0.0
+    # Start below zero so the first epoch always writes a checkpoint; otherwise a
+    # run that never beats 0.0 val accuracy (e.g. a short smoke test) would leave
+    # no best_model.pt for the reload below to find.
+    best_val_accuracy = -1.0
     checkpoint_path = Path(run_dir) / checkpoint_name
 
     for epoch in range(1, epochs + 1):
@@ -59,16 +62,17 @@ def fit_classifier(
                 "learning_rate": current_lr,
             }
         )
-        print(
-            f"Epoch {epoch:03d}/{epochs:03d} | "
-            f"train_loss={train_loss:.4f} train_acc={train_accuracy:.4f} | "
-            f"val_loss={val['loss']:.4f} val_acc={val['accuracy']:.4f} | best={best_val_accuracy:.4f}"
-        )
 
         if val["accuracy"] > best_val_accuracy:
             best_val_accuracy = val["accuracy"]
             torch.save({"epoch": epoch, "model_state_dict": model.state_dict(),
                         "val_accuracy": best_val_accuracy}, checkpoint_path)
+
+        print(
+            f"Epoch {epoch:03d}/{epochs:03d} | "
+            f"train_loss={train_loss:.4f} train_acc={train_accuracy:.4f} | "
+            f"val_loss={val['loss']:.4f} val_acc={val['accuracy']:.4f} | best={max(best_val_accuracy, 0.0):.4f}"
+        )
 
     model.load_state_dict(torch.load(checkpoint_path, map_location=device)["model_state_dict"])
     return model, pd.DataFrame(history)
