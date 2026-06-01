@@ -1,109 +1,107 @@
-# LTFSR Meta
+# LTFSR-Meta — Long-Tail Few-Shot Recognition on CIFAR-100-LT
 
-Repository này đang được tối ưu để chạy trên Kaggle theo luồng ngắn gọn:
-dataset -> baseline -> lưu checkpoint -> kiểm tra nhanh.
+A small, readable research repository that compares **four methods** for
+recognising classes from a long-tailed dataset (a few "head" classes have many
+images, many "tail" classes have very few):
 
-Mục tiêu hiện tại là chuẩn hóa phần dữ liệu CIFAR-100-LT để có thể upload lên Kaggle và chạy lại baseline một cách ổn định. Các ý tưởng meta-learning/prototype/contrastive trong `config/` là roadmap, còn script chạy thực tế trong repo hiện tại là baseline ResNet18.
+| # | Method | Idea | Code |
+|---|--------|------|------|
+| 1 | **Baseline** | ResNet-18 + linear softmax head | `src/trainers/baseline_trainer.py` |
+| 2 | **Prototype** | Replace the linear head with distance-to-prototype | `src/trainers/prototype_trainer.py` |
+| 3 | **Contrastive (SupCon)** | Pre-train the encoder contrastively, then linear-probe | `src/trainers/contrastive_trainer.py` |
+| 4 | **Meta-learning** | Episodic Prototypical Networks (learn to learn from few examples) | `src/trainers/meta_trainer.py` |
 
-## Hiện có gì chạy được
+Each method has a one-page explanation in [`docs/`](docs/). The methods share one
+encoder, one dataset module, and one metrics/visualisation suite, so the
+comparison is fair and the code stays small.
 
-- Chuẩn bị CIFAR-10, CIFAR-100, hoặc CIFAR-100-LT bằng [data/prepare_datasets.py](data/prepare_datasets.py)
-- Kiểm tra layout dataset bằng [data/validate_cifar_lt.py](data/validate_cifar_lt.py)
-- Train baseline bằng [training/train_baseline.py](training/train_baseline.py)
+> The full research background (literature, roadmap) lives in `Summary.md`.
 
-## Cấu trúc dataset chuẩn
+## Repository structure
 
-Sau khi chuẩn bị xong, thư mục dataset sẽ có dạng:
+```
+ltfsr-meta/
+├── src/
+│   ├── datasets/        # cifar_lt loaders + class groups, episodic sampler
+│   ├── models/          # shared encoder, baseline, prototype, projection heads
+│   ├── trainers/        # one file per method + shared engine/classifier loops
+│   ├── evaluation/      # imbalanced metrics + all plots
+│   └── utils/           # seeding, experiment bookkeeping
+├── data/
+│   ├── prepare_datasets.py    # build CIFAR-100-LT (ImageFolder layout)
+│   └── validate_cifar_lt.py   # sanity-check the prepared dataset
+├── docs/                # 01_baseline.md … 04_meta_learning.md (the algorithms)
+├── notebooks/
+│   └── run_experiment.ipynb   # the ONLY file you run on Kaggle
+├── outputs/             # per-run results (gitignored)
+└── requirements.txt
+```
 
-```text
+## The dataset
+
+`data/prepare_datasets.py` downloads CIFAR-100 via torchvision and exports a
+long-tail split as an `ImageFolder`:
+
+```
 CIFAR-100-LT/
-├── class_counts.json
-├── dataset_info.json
-├── test_manifest.csv
-├── train_manifest.csv
-├── train/
-│   ├── class_000/
-│   ├── class_001/
-│   └── ...
-└── test/
-    ├── class_000/
-    ├── class_001/
-    └── ...
+├── class_counts.json          # train images kept per class (the LT profile)
+├── train/class_000 … class_099/
+└── test/class_000  … class_099/
 ```
 
-Đây là layout `ImageFolder`, nên training code có thể đọc trực tiếp từ `train/` và `test/`.
+Head class ≈ 500 images, tail class ≈ 5 images (imbalance factor 100).
 
-## Cách dùng trên Kaggle
+## Metrics (built for imbalance)
 
-### 1. Upload dữ liệu
+Accuracy alone is misleading on long-tail data, so every run reports
+(`src/evaluation/metrics.py`): **Accuracy, Balanced Accuracy, Macro
+Precision/Recall/F1, Weighted F1, Many/Medium/Few-shot accuracy, G-Mean, MCC**.
 
-Bạn có thể upload một trong hai kiểu sau lên Kaggle:
+## Visualisations (saved automatically to the run folder)
 
-- Upload thẳng thư mục dataset đã chuẩn bị, ví dụ `CIFAR-100-LT/`
-- Upload cả repo và để script tự tải CIFAR từ `torchvision` trong Kaggle notebook / Kaggle script
+Training curves (loss & accuracy), raw + normalised confusion matrices, class
+frequency histogram, head/medium/tail group sizes, and a t-SNE of the learned
+features.
 
-Nếu đã có dataset được chuẩn bị sẵn ở máy local, chỉ cần đưa nguyên thư mục `CIFAR-100-LT/` lên Kaggle Dataset.
+---
 
-### 2. Chuẩn bị dataset
-
-Trên Kaggle, chạy:
+## Run locally
 
 ```bash
-python data/prepare_datasets.py --dataset cifar100-lt --data_dir /kaggle/working/data/CIFAR-100-LT --overwrite
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 1. Build the dataset (once)
+python data/prepare_datasets.py --dataset cifar100-lt --data_dir ./data --overwrite
+
+# 2. Check it
+python data/validate_cifar_lt.py --data_dir ./data/CIFAR-100-LT
+
+# 3. Run an experiment — open the notebook and Run All
+jupyter notebook notebooks/run_experiment.ipynb
 ```
 
-Nếu muốn cache raw files ở chỗ khác, thêm `--raw_dir`:
+The notebook is the single entry point: set the config in the first cell, choose
+a method, and Run All. All training logic lives in `src/` — nothing is duplicated
+in the notebook.
 
-```bash
-python data/prepare_datasets.py --dataset cifar100-lt --data_dir /kaggle/working/data/CIFAR-100-LT --raw_dir /kaggle/working/raw --overwrite
-```
+## Run on Kaggle
 
-Script sẽ tạo lại `train/`, `test/`, `train_manifest.csv`, `test_manifest.csv`, `class_counts.json`, và `dataset_info.json`.
+1. **Add the data.** Either upload the prepared `CIFAR-100-LT/` folder as a
+   Kaggle *Dataset* (it appears under `/kaggle/input/...`), or let the notebook
+   build it into `/kaggle/working` (set `BUILD_DATASET = True`).
+2. **Add the code.** Upload the repo as a Kaggle Dataset/Utility, or
+   `!git clone` it in the first cell. The notebook auto-detects where `src/`
+   lives and adds it to `sys.path`.
+3. **Open `notebooks/run_experiment.ipynb`**, set `DATA_DIR` /
+   `OUTPUT_DIR` / `METHOD` in the config cell, enable GPU, and **Run All**.
 
-### 3. Kiểm tra dataset
+Set `MAX_TRAIN_SAMPLES` / `MAX_TEST_SAMPLES` (and small `EPOCHS`) for a quick
+smoke test before a full run.
 
-```bash
-python data/validate_cifar_lt.py --data_dir /kaggle/working/data/CIFAR-100-LT
-```
+## Reproducibility
 
-### 4. Chạy baseline
-
-```bash
-python training/train_baseline.py --config config/config_baseline.yaml --data_dir /kaggle/working/data/CIFAR-100-LT --output_dir /kaggle/working/results/baseline
-```
-
-Nếu bạn muốn giảm thời gian chạy trên Kaggle, có thể giới hạn số mẫu bằng:
-
-```bash
-python training/train_baseline.py --config config/config_baseline.yaml --data_dir /kaggle/working/data/CIFAR-100-LT --output_dir /kaggle/working/results/baseline --max_train_samples 5000 --max_test_samples 1000
-```
-
-## Khuyến nghị cho Kaggle
-
-- Dùng `--device cpu` nếu notebook không có GPU hoặc muốn test nhanh.
-- Dùng `--max_train_samples` và `--max_test_samples` để smoke test trước khi chạy full.
-- Giữ `data_dir` trỏ đúng thư mục chứa `train/` và `test/`.
-
-## Config baseline
-
-Config baseline hiện tại nằm ở [config/config_baseline.yaml](config/config_baseline.yaml). Nó đã được đặt sẵn cho CIFAR-100-LT và dùng 100 lớp.
-
-## Lưu ý về phần chưa hoàn thiện
-
-- Các file config meta-learning/full model hiện có, nhưng trainer tương ứng chưa có trong repo này.
-- Vì vậy, README này chỉ mô tả luồng chạy thực tế hiện tại: dataset -> baseline.
-- Khi bạn thêm trainer cho meta-learning, có thể mở rộng README từ cấu trúc này mà không cần đổi lại phần dataset.
-
-## Tóm tắt luồng chạy
-
-1. Chuẩn bị dataset CIFAR-100-LT.
-2. Validate layout dataset.
-3. Train baseline ResNet18.
-4. Lưu checkpoint trong `results/baseline/`.
-
-## Các file chính
-
-- [data/prepare_datasets.py](data/prepare_datasets.py)
-- [data/validate_cifar_lt.py](data/validate_cifar_lt.py)
-- [training/train_baseline.py](training/train_baseline.py)
-- [config/config_baseline.yaml](config/config_baseline.yaml)
+`src/utils/seed.py` seeds Python, NumPy and PyTorch (CPU + CUDA) and enables
+deterministic cuDNN. Each run writes its `config.json`, `metrics.csv`,
+`metrics.json`, the best checkpoint, and all figures into its own folder under
+`outputs/`.

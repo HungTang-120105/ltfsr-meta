@@ -133,8 +133,12 @@ dmypy.json
 data/*
 !data/*.py
 !data/*.md
-!data/__init__.py
 results/
+
+# Experiment run artifacts (keep the folder, ignore the contents)
+outputs/*
+!outputs/.gitkeep
+
 *.pkl
 *.pth
 *.pt
