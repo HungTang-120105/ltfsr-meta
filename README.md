@@ -48,7 +48,8 @@ ltfsr-meta/
 │   └── validate_cifar_lt.py   # sanity-check the prepared dataset
 ├── docs/                # 01_baseline.md … 05_meta.md (the algorithms)
 ├── notebooks/
-│   └── run_experiment.ipynb   # the ONLY file you run on Kaggle
+│   ├── run_experiment.ipynb   # run ONE method (set METHOD, Run All)
+│   └── run_all_methods.ipynb  # run ALL methods + comparison plots in one pass
 ├── outputs/             # per-run results (gitignored)
 └── requirements.txt
 ```

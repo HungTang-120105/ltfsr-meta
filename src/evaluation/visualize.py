@@ -90,6 +90,66 @@ def plot_shot_distribution(shot_groups: dict[str, list[int]], out_dir: Path) -> 
     return _save(fig, out_dir, "shot_distribution.png")
 
 
+def plot_metric_comparison(comparison: pd.DataFrame, out_dir: Path,
+                           metrics: list[str] | None = None) -> Path:
+    """Grouped bar chart: for each metric, one bar per method (all in one figure).
+
+    ``comparison`` is the table returned by ``experiment.compare_runs`` (a
+    ``method`` column plus one column per metric).
+    """
+    if metrics is None:
+        metrics = ["accuracy", "balanced_accuracy", "macro_f1", "g_mean",
+                   "many_shot_accuracy", "medium_shot_accuracy", "few_shot_accuracy"]
+    metrics = [m for m in metrics if m in comparison.columns]
+
+    x = np.arange(len(metrics))
+    n_methods = len(comparison)
+    width = 0.8 / max(n_methods, 1)
+
+    fig, ax = plt.subplots(figsize=(max(8, len(metrics) * 1.6), 5))
+    for i, (_, row) in enumerate(comparison.iterrows()):
+        offset = (i - (n_methods - 1) / 2) * width
+        ax.bar(x + offset, [row[m] for m in metrics], width, label=row["method"])
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics, rotation=30, ha="right")
+    ax.set_ylabel("Score")
+    ax.set_title("Method comparison across metrics")
+    ax.legend()
+    ax.grid(True, axis="y", alpha=0.3)
+    return _save(fig, out_dir, "comparison_metrics.png")
+
+
+def plot_curves_overlay(histories: dict, out_dir: Path,
+                        columns: list[str] | None = None) -> list[Path]:
+    """One figure per measure, with every method overlaid as a line.
+
+    ``histories`` maps ``method_name -> per-epoch history DataFrame``. Each
+    requested ``column`` (e.g. ``val_accuracy``) becomes a single plot containing
+    all methods. The x-axis is the epoch index (1..N) so methods with different
+    schedule lengths still line up at the start.
+    """
+    if columns is None:
+        columns = ["val_accuracy", "val_loss", "train_accuracy", "train_loss"]
+    paths = []
+    for column in columns:
+        fig, ax = plt.subplots(figsize=(7, 5))
+        plotted = False
+        for method, history in histories.items():
+            if column in history.columns:
+                ax.plot(range(1, len(history) + 1), history[column], label=method)
+                plotted = True
+        if not plotted:
+            plt.close(fig)
+            continue
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel(column)
+        ax.set_title(f"{column} — all methods")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        paths.append(_save(fig, out_dir, f"overlay_{column}.png"))
+    return paths
+
+
 def plot_tsne(features: np.ndarray, labels: np.ndarray, out_dir: Path, max_points: int = 2000) -> Path | None:
     """2-D t-SNE scatter of learned features (skipped if scikit-learn lacks it)."""
     try:
