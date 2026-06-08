@@ -21,7 +21,7 @@ from torch.utils.data import DataLoader
 from src.datasets.cifar_lt import TwoCropTransform, build_transforms, load_split, make_loader
 from src.models.baseline import BaselineClassifier
 from src.models.projection import ContrastiveModel
-from src.trainers.classifier import fit_classifier
+from src.trainers.decoupling_trainer import rebalance_classifier
 
 
 def supcon_loss(embeddings: torch.Tensor, labels: torch.Tensor, temperature: float = 0.07) -> torch.Tensor:
@@ -55,9 +55,10 @@ def pretrain_encoder(
     learning_rate: float,
     temperature: float,
     pretrained: bool,
+    image_size: int = 32,
 ) -> tuple[ContrastiveModel, pd.DataFrame]:
     """Stage 1: contrastive pre-training with two augmented views per image."""
-    two_crop = TwoCropTransform(build_transforms(train=True))
+    two_crop = TwoCropTransform(build_transforms(train=True, image_size=image_size))
     dataset = load_split(data_dir, "train", transform=two_crop)
     loader = make_loader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
@@ -91,34 +92,39 @@ def pretrain_encoder(
 
 def train_contrastive(
     data_dir: Path,
-    train_loader: DataLoader,
+    train_dataset,
     val_loader: DataLoader,
     num_classes: int,
     device: torch.device,
     run_dir: Path,
-    pretrain_epochs: int = 100,
-    probe_epochs: int = 30,
+    pretrain_epochs: int = 200,
+    probe_epochs: int = 10,
     batch_size: int = 128,
     num_workers: int = 2,
-    pretrain_lr: float = 0.1,
+    pretrain_lr: float = 0.5,
     probe_lr: float = 0.1,
     temperature: float = 0.07,
-    pretrained: bool = True,
+    pretrained: bool = False,
+    image_size: int = 32,
 ) -> tuple[BaselineClassifier, pd.DataFrame, pd.DataFrame]:
-    """Run both stages; return (probe model, probe history, pretrain history)."""
+    """Run both stages; return (cRT model, classifier history, pretrain history).
+
+    Stage 1 learns the representation with SupCon. Stage 2 is **cRT** (the same
+    class-balanced classifier re-training used by Method 3), not a plain linear
+    probe — that is what lets the strong contrastive features actually help the
+    tail instead of inheriting the head bias.
+    """
     encoder_model, pretrain_history = pretrain_encoder(
         data_dir, device, pretrain_epochs, batch_size, num_workers,
-        pretrain_lr, temperature, pretrained,
+        pretrain_lr, temperature, pretrained, image_size=image_size,
     )
 
-    # Stage 2: linear probe on the frozen contrastive encoder.
+    # Stage 2: cRT on the frozen contrastive encoder.
     classifier = BaselineClassifier(num_classes=num_classes, pretrained=False).to(device)
     classifier.encoder.load_state_dict(encoder_model.encoder.state_dict())
-    for parameter in classifier.encoder.parameters():
-        parameter.requires_grad = False
 
-    classifier, probe_history = fit_classifier(
-        classifier, train_loader, val_loader, device, run_dir,
-        epochs=probe_epochs, learning_rate=probe_lr, checkpoint_name="best_model.pt",
+    classifier, probe_history = rebalance_classifier(
+        classifier, train_dataset, val_loader, num_classes, device, run_dir,
+        epochs=probe_epochs, learning_rate=probe_lr, batch_size=batch_size, num_workers=num_workers,
     )
     return classifier, probe_history, pretrain_history

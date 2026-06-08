@@ -22,8 +22,10 @@ regions and are systematically under-predicted.
 
 This is exactly why the headline **accuracy looks fine but `few_shot_accuracy`
 and `g_mean` are low** — the model is right on frequent classes and wrong on rare
-ones. The baseline is the reference point that the next three methods try to
-beat on the *tail* metrics, not just on overall accuracy.
+ones. The baseline is the reference point that the next methods try to beat on the
+*tail* metrics (balanced / few-shot accuracy), **not** on overall top-1 — on plain
+top-1 a well-trained cross-entropy baseline is already very hard to beat, which is
+why the comparison is framed around the long-tail metrics.
 
 ## What to look at after running
 

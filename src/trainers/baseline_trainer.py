@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 import torch
+from torch import nn
 from torch.utils.data import DataLoader
 
 from src.models.baseline import BaselineClassifier
@@ -22,13 +23,18 @@ def train_baseline(
     num_classes: int,
     device: torch.device,
     run_dir: Path,
-    epochs: int = 100,
+    epochs: int = 200,
     learning_rate: float = 0.1,
-    pretrained: bool = True,
+    pretrained: bool = False,
+    criterion: nn.Module | None = None,
 ) -> tuple[BaselineClassifier, pd.DataFrame]:
-    """Train the baseline classifier and return (best model, history)."""
+    """Train the baseline classifier and return (best model, history).
+
+    Pass ``criterion=BalancedSoftmaxLoss(...)`` to get Method 2 (Balanced
+    Softmax) — the model and loop are otherwise identical to the plain baseline.
+    """
     model = BaselineClassifier(num_classes=num_classes, pretrained=pretrained).to(device)
     return fit_classifier(
         model, train_loader, val_loader, device, run_dir,
-        epochs=epochs, learning_rate=learning_rate,
+        epochs=epochs, learning_rate=learning_rate, criterion=criterion,
     )

@@ -66,7 +66,7 @@ def train_meta(
     k_shot: int = 5,
     n_query: int = 15,
     learning_rate: float = 0.001,
-    pretrained: bool = True,
+    pretrained: bool = False,
     seed: int = 42,
 ) -> tuple[nn.Module, pd.DataFrame]:
     """Episodically train the encoder; keep the best weights by monitor accuracy."""

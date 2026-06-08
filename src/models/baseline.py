@@ -17,7 +17,7 @@ from src.models.backbone import FEATURE_DIM, build_encoder
 class BaselineClassifier(nn.Module):
     """ResNet-18 features followed by a single linear classification layer."""
 
-    def __init__(self, num_classes: int = 100, pretrained: bool = True) -> None:
+    def __init__(self, num_classes: int = 100, pretrained: bool = False) -> None:
         super().__init__()
         self.encoder = build_encoder(pretrained=pretrained)
         self.classifier = nn.Linear(FEATURE_DIM, num_classes)

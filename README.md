@@ -1,19 +1,35 @@
 # LTFSR-Meta — Long-Tail Few-Shot Recognition on CIFAR-100-LT
 
-A small, readable research repository that compares **four methods** for
-recognising classes from a long-tailed dataset (a few "head" classes have many
-images, many "tail" classes have very few):
+A small, readable research repository for long-tailed recognition (a few "head"
+classes have many images, many "tail" classes have very few). The study makes one
+point: **on long-tail data the bottleneck is the classifier, not the features.**
+Each method fixes the imbalance at a different level, so the **balanced / few-shot
+accuracy** rises step by step:
 
-| # | Method | Idea | Code |
-|---|--------|------|------|
-| 1 | **Baseline** | ResNet-18 + linear softmax head | `src/trainers/baseline_trainer.py` |
-| 2 | **Prototype** | Replace the linear head with distance-to-prototype | `src/trainers/prototype_trainer.py` |
-| 3 | **Contrastive (SupCon)** | Pre-train the encoder contrastively, then linear-probe | `src/trainers/contrastive_trainer.py` |
-| 4 | **Meta-learning** | Episodic Prototypical Networks (learn to learn from few examples) | `src/trainers/meta_trainer.py` |
+| # | `METHOD` | Fixes at level | Idea | Code |
+|---|----------|----------------|------|------|
+| 1 | `baseline` | — | ResNet + linear softmax head + cross-entropy (head-biased reference) | `src/trainers/baseline_trainer.py` |
+| 2 | `balanced_softmax` | loss | Add the class-prior to the logits while training (Ren et al. 2020) | `src/trainers/losses.py` |
+| 3 | `decoupling` | classifier | Train features, then re-train the head on a class-balanced sampler — cRT (Kang et al. 2020) | `src/trainers/decoupling_trainer.py` |
+| 4 | `supcon` | representation | SupCon features + cRT classifier — **best** | `src/trainers/contrastive_trainer.py` |
+| 5 | `meta` | (bonus) | Episodic Prototypical Networks, reported on the few-shot N-way axis | `src/trainers/meta_trainer.py` |
 
 Each method has a one-page explanation in [`docs/`](docs/). The methods share one
 encoder, one dataset module, and one metrics/visualisation suite, so the
 comparison is fair and the code stays small.
+
+> **Headline metric = `balanced_accuracy` and `few_shot_accuracy`, not plain top-1.**
+> On overall top-1 (dominated by head classes) a well-trained cross-entropy baseline
+> is hard to beat; the long-tail story shows up on the balanced/tail metrics.
+
+### Backbone setups
+
+- **Main (default):** `PRETRAINED=False`, `IMAGE_SIZE=32` — a CIFAR-stem ResNet-18
+  (3×3 conv, no max-pool) trained from scratch. This is the standard CIFAR-LT
+  protocol, so the numbers are comparable to the literature.
+- **Optional reference table:** `PRETRAINED=True`, `IMAGE_SIZE=224` — ImageNet
+  ResNet-18 on up-scaled images. Higher absolute numbers, but transfer-learning,
+  so report it only as a secondary table.
 
 > The full research background (literature, roadmap) lives in `Summary.md`.
 
@@ -30,7 +46,7 @@ ltfsr-meta/
 ├── data/
 │   ├── prepare_datasets.py    # build CIFAR-100-LT (ImageFolder layout)
 │   └── validate_cifar_lt.py   # sanity-check the prepared dataset
-├── docs/                # 01_baseline.md … 04_meta_learning.md (the algorithms)
+├── docs/                # 01_baseline.md … 05_meta.md (the algorithms)
 ├── notebooks/
 │   └── run_experiment.ipynb   # the ONLY file you run on Kaggle
 ├── outputs/             # per-run results (gitignored)

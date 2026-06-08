@@ -34,7 +34,7 @@ class ProjectionHead(nn.Module):
 class ContrastiveModel(nn.Module):
     """Encoder + projection head used only during contrastive pre-training."""
 
-    def __init__(self, pretrained: bool = True, embedding_dim: int = 128) -> None:
+    def __init__(self, pretrained: bool = False, embedding_dim: int = 128) -> None:
         super().__init__()
         self.encoder = build_encoder(pretrained=pretrained)
         self.projection = ProjectionHead(out_dim=embedding_dim)

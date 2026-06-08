@@ -43,3 +43,24 @@ def save_history(run_dir: Path, history: pd.DataFrame) -> Path:
     path = Path(run_dir) / "metrics.csv"
     history.to_csv(path, index=False)
     return path
+
+
+def compare_runs(output_dir: Path, columns: list[str] | None = None) -> pd.DataFrame:
+    """Collect every ``outputs/<method>/metrics.json`` into one comparison table.
+
+    This is the headline table for the report: one row per method, with the
+    long-tail metrics that matter side by side. Sorted by balanced accuracy.
+    """
+    if columns is None:
+        columns = ["accuracy", "balanced_accuracy", "macro_f1", "g_mean",
+                   "many_shot_accuracy", "medium_shot_accuracy", "few_shot_accuracy"]
+    rows = []
+    for metrics_path in sorted(Path(output_dir).glob("*/metrics.json")):
+        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+        row = {"method": metrics_path.parent.name}
+        row.update({col: metrics.get(col) for col in columns})
+        rows.append(row)
+    table = pd.DataFrame(rows)
+    if "balanced_accuracy" in table.columns and not table.empty:
+        table = table.sort_values("balanced_accuracy", ascending=False).reset_index(drop=True)
+    return table

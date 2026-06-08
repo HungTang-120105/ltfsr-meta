@@ -52,7 +52,7 @@ class PrototypeClassifier(nn.Module):
     cross-entropy loss pulls a sample's features towards its class prototype.
     """
 
-    def __init__(self, num_classes: int = 100, pretrained: bool = True) -> None:
+    def __init__(self, num_classes: int = 100, pretrained: bool = False) -> None:
         super().__init__()
         self.encoder = build_encoder(pretrained=pretrained)
         self.prototypes = nn.Parameter(torch.randn(num_classes, FEATURE_DIM))

@@ -17,8 +17,9 @@ import json
 from pathlib import Path
 from typing import Callable
 
+import numpy as np
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
@@ -27,23 +28,23 @@ CIFAR_MEAN = (0.5071, 0.4865, 0.4409)
 CIFAR_STD = (0.2673, 0.2564, 0.2762)
 
 
-def build_transforms(train: bool) -> transforms.Compose:
-    """Standard CIFAR augmentation for training; plain normalisation for eval."""
+def build_transforms(train: bool, image_size: int = 32) -> transforms.Compose:
+    """CIFAR augmentation for training; plain normalisation for eval.
+
+    ``image_size`` stays 32 for the main from-scratch setup. Set it to 224 for the
+    optional pretrained-ImageNet setup, which needs the larger input
+    (``build_encoder(pretrained=True)``).
+    """
+    resize = [] if image_size == 32 else [transforms.Resize(image_size)]
     if train:
-        return transforms.Compose(
-            [
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
-            ]
-        )
-    return transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        steps = resize + [
+            transforms.RandomCrop(image_size, padding=image_size // 8),
+            transforms.RandomHorizontalFlip(),
         ]
-    )
+    else:
+        steps = resize
+    steps += [transforms.ToTensor(), transforms.Normalize(CIFAR_MEAN, CIFAR_STD)]
+    return transforms.Compose(steps)
 
 
 class TwoCropTransform:
@@ -67,6 +68,29 @@ def make_loader(dataset, batch_size: int, shuffle: bool, num_workers: int = 2) -
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=False,
+    )
+
+
+def make_balanced_loader(dataset, batch_size: int, num_workers: int = 2) -> DataLoader:
+    """A loader that draws every CLASS with equal probability (class-balanced).
+
+    On long-tail data a normal shuffled loader is *instance*-balanced: head
+    classes dominate every batch. This sampler weights each image by ``1 / (count
+    of its class)``, so over an epoch every class is seen about equally often.
+    This is exactly what the decoupling / cRT stage needs to de-bias the
+    classifier without touching the encoder.
+    """
+    targets = np.array([label for _, label in dataset.samples])
+    class_counts = np.bincount(targets)
+    weights = 1.0 / class_counts[targets]
+    sampler = WeightedRandomSampler(weights, num_samples=len(targets), replacement=True)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        sampler=sampler,
         num_workers=num_workers,
         pin_memory=torch.cuda.is_available(),
         drop_last=False,

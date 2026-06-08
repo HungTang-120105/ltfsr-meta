@@ -28,14 +28,23 @@ def fit_classifier(
     weight_decay: float = 5e-4,
     momentum: float = 0.9,
     checkpoint_name: str = "best_model.pt",
+    criterion: nn.Module | None = None,
 ) -> tuple[nn.Module, pd.DataFrame]:
     """Train with SGD + cosine schedule, keeping the best-on-validation weights.
 
+    ``criterion`` defaults to plain cross-entropy; pass a long-tail loss (e.g.
+    ``BalancedSoftmaxLoss``) to swap it in without changing this loop.
+
     Returns the model (with best weights reloaded) and the per-epoch history.
     """
-    criterion = nn.CrossEntropyLoss()
+    if criterion is None:
+        criterion = nn.CrossEntropyLoss()
+    criterion = criterion.to(device)
+    # Only optimise trainable parameters — lets the cRT stage freeze the encoder
+    # and update the classifier alone just by setting requires_grad=False.
+    trainable = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(
-        model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay
+        trainable, lr=learning_rate, momentum=momentum, weight_decay=weight_decay
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(epochs, 1))
 
