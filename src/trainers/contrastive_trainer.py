@@ -10,15 +10,14 @@ Two stages (see docs/03_contrastive.md):
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 
 import pandas as pd
 import torch
-import torch.nn.functional as F
-from torch import nn
 from torch.utils.data import DataLoader
 
-from src.datasets.cifar_lt import TwoCropTransform, build_transforms, load_split, make_loader
+from src.datasets.cifar_lt import TwoCropTransform, build_transforms, make_loader
 from src.models.baseline import BaselineClassifier
 from src.models.projection import ContrastiveModel
 from src.trainers.decoupling_trainer import rebalance_classifier
@@ -47,7 +46,7 @@ def supcon_loss(embeddings: torch.Tensor, labels: torch.Tensor, temperature: flo
 
 
 def pretrain_encoder(
-    data_dir: Path,
+    train_dataset,
     device: torch.device,
     epochs: int,
     batch_size: int,
@@ -57,10 +56,14 @@ def pretrain_encoder(
     pretrained: bool,
     image_size: int = 32,
 ) -> tuple[ContrastiveModel, pd.DataFrame]:
-    """Stage 1: contrastive pre-training with two augmented views per image."""
-    two_crop = TwoCropTransform(build_transforms(train=True, image_size=image_size))
-    dataset = load_split(data_dir, "train", transform=two_crop)
-    loader = make_loader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    """Stage 1: contrastive pre-training with two augmented views per image.
+
+    Pre-training runs on exactly ``train_dataset`` (the training split), so it never
+    sees the validation images used for model selection.
+    """
+    two_view = copy.copy(train_dataset)
+    two_view.transform = TwoCropTransform(build_transforms(train=True, image_size=image_size))
+    loader = make_loader(two_view, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
     model = ContrastiveModel(pretrained=pretrained).to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-4)
@@ -91,7 +94,6 @@ def pretrain_encoder(
 
 
 def train_contrastive(
-    data_dir: Path,
     train_dataset,
     val_loader: DataLoader,
     num_classes: int,
@@ -109,13 +111,13 @@ def train_contrastive(
 ) -> tuple[BaselineClassifier, pd.DataFrame, pd.DataFrame]:
     """Run both stages; return (cRT model, classifier history, pretrain history).
 
-    Stage 1 learns the representation with SupCon. Stage 2 is **cRT** (the same
-    class-balanced classifier re-training used by Method 3), not a plain linear
-    probe — that is what lets the strong contrastive features actually help the
-    tail instead of inheriting the head bias.
+    Stage 1 learns the representation with SupCon on ``train_dataset``. Stage 2 is
+    **cRT** (the same class-balanced classifier re-training used by Method 3), not a
+    plain linear probe — that is what lets the strong contrastive features actually
+    help the tail instead of inheriting the head bias.
     """
     encoder_model, pretrain_history = pretrain_encoder(
-        data_dir, device, pretrain_epochs, batch_size, num_workers,
+        train_dataset, device, pretrain_epochs, batch_size, num_workers,
         pretrain_lr, temperature, pretrained, image_size=image_size,
     )
 

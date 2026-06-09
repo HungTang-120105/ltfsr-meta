@@ -64,6 +64,7 @@ Mở notebook, chỉ cần sửa **cell config (cell 2)**, rồi **Run All**.
 | `METHODS` | Danh sách method sẽ train, theo thứ tự | `["baseline","balanced_softmax","decoupling","supcon","meta","cmo"]` |
 | `PRETRAINED` / `IMAGE_SIZE` | `False`/`32` = từ scratch (setup chính). `True`/`224` = ImageNet (bảng phụ) | `False` / `32` |
 | `EPOCHS` | Số epoch (from-scratch cần dài) | `200` |
+| `VAL_FRACTION` | Tỉ lệ tách **validation** từ train để **chọn checkpoint**; test chỉ dùng báo cáo cuối | `0.1` |
 | `MAX_TRAIN_SAMPLES` | Giới hạn ảnh để smoke test (`None` = full) | `None` |
 | `CRT_EPOCHS`, `CRT_LR` | Giai đoạn cRT của decoupling/supcon | `10`, `0.1` |
 | `PRETRAIN_EPOCHS`, `PRETRAIN_LR`, `TEMPERATURE` | SupCon | `200`, `0.5`, `0.07` |
@@ -137,6 +138,12 @@ outputs/
 
 **Thước đo cần nhìn (long-tail):** ưu tiên `balanced_accuracy` và `few_shot_accuracy`,
 không chỉ `accuracy`. (Test set cân bằng nên `accuracy == balanced_accuracy`.)
+
+**Về validation (mới):** mỗi method được train trên train' (≈90% train, vẫn giữ profile
+long-tail; tail giữ nguyên — chỉ head/medium góp ảnh cho val), chọn epoch tốt nhất theo
+**val** rồi mới chấm trên **test**. Điều này khắt khe hơn (không còn chọn model trên test).
+`phase0_reuse.ipynb` cũng chọn `τ` trên val. Vì cách chọn checkpoint đã đổi, **hãy chạy lại
+`run_all_methods.ipynb`** nếu checkpoint cũ của bạn được train theo lối chọn-trên-test.
 
 ---
 

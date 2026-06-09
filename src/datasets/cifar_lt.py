@@ -13,7 +13,10 @@ Folder names sort to 0..99, so the ImageFolder label equals the class id.
 
 from __future__ import annotations
 
+import copy
 import json
+import random
+from collections import defaultdict
 from pathlib import Path
 from typing import Callable
 
@@ -60,6 +63,44 @@ class TwoCropTransform:
 def load_split(data_dir: Path, split: str, transform: transforms.Compose) -> ImageFolder:
     """Load the ``train`` or ``test`` split as an ImageFolder dataset."""
     return ImageFolder(Path(data_dir) / split, transform=transform)
+
+
+def subset(dataset, indices: list[int]):
+    """Shallow copy of an ImageFolder keeping only ``indices``.
+
+    The transform and all other attributes are shared with the original; only the
+    sample list is narrowed, so ``.samples`` / ``.targets`` (needed by the episodic
+    sampler and the balanced sampler) stay consistent.
+    """
+    new = copy.copy(dataset)
+    new.samples = [dataset.samples[i] for i in indices]
+    new.targets = [dataset.targets[i] for i in indices]
+    if hasattr(dataset, "imgs"):
+        new.imgs = new.samples
+    return new
+
+
+def split_indices_by_class(targets: list[int], val_fraction: float = 0.1,
+                           seed: int = 42) -> tuple[list[int], list[int]]:
+    """Stratified per-class split -> (train_indices, val_indices).
+
+    A fraction of each class is held out for validation (model selection). Every
+    class keeps at least one training sample, so the rarest tail classes may
+    contribute 0 images to validation rather than losing their only example.
+    """
+    rng = random.Random(seed)
+    by_class: dict[int, list[int]] = defaultdict(list)
+    for index, label in enumerate(targets):
+        by_class[int(label)].append(index)
+
+    train_indices, val_indices = [], []
+    for indices in by_class.values():
+        indices = indices[:]
+        rng.shuffle(indices)
+        n_val = min(int(len(indices) * val_fraction), len(indices) - 1)  # keep >=1 for train
+        val_indices.extend(indices[:n_val])
+        train_indices.extend(indices[n_val:])
+    return sorted(train_indices), sorted(val_indices)
 
 
 def make_loader(dataset, batch_size: int, shuffle: bool, num_workers: int = 2) -> DataLoader:
