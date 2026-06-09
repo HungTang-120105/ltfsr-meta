@@ -29,6 +29,7 @@ def fit_classifier(
     momentum: float = 0.9,
     checkpoint_name: str = "best_model.pt",
     criterion: nn.Module | None = None,
+    eval_encoder: bool = False,
 ) -> tuple[nn.Module, pd.DataFrame]:
     """Train with SGD + cosine schedule, keeping the best-on-validation weights.
 
@@ -56,7 +57,9 @@ def fit_classifier(
     checkpoint_path = Path(run_dir) / checkpoint_name
 
     for epoch in range(1, epochs + 1):
-        train_loss, train_accuracy = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss, train_accuracy = train_one_epoch(
+            model, train_loader, criterion, optimizer, device, eval_encoder=eval_encoder
+        )
         val = evaluate(model, val_loader, device, criterion=criterion)
         current_lr = optimizer.param_groups[0]["lr"]
         scheduler.step()

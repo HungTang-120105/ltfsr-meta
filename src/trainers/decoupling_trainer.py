@@ -57,6 +57,7 @@ def rebalance_classifier(
     return fit_classifier(
         model, balanced_loader, val_loader, device, run_dir,
         epochs=epochs, learning_rate=learning_rate, checkpoint_name=checkpoint_name,
+        eval_encoder=True,  # freeze encoder BN: only the classifier is being retrained
     )
 
 

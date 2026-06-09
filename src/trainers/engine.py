@@ -20,9 +20,18 @@ def train_one_epoch(
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
+    eval_encoder: bool = False,
 ) -> tuple[float, float]:
-    """Run one training epoch; return sample-weighted loss and accuracy."""
+    """Run one training epoch; return sample-weighted loss and accuracy.
+
+    ``eval_encoder=True`` keeps ``model.encoder`` in eval mode during training
+    (frozen BatchNorm running stats). This is required for cRT / decoupling: the
+    encoder is frozen, so its BN must NOT drift to the class-balanced distribution
+    while only the classifier is being retrained.
+    """
     model.train()
+    if eval_encoder and hasattr(model, "encoder"):
+        model.encoder.eval()
     total_loss, total_correct, total_samples = 0.0, 0, 0
 
     for images, targets in loader:
