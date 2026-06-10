@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.metrics import balanced_accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -72,7 +73,7 @@ def train_augmented(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(epochs, 1))
 
     history: list[dict] = []
-    best_val_accuracy = -1.0
+    best_val_score = -1.0
     checkpoint_path = Path(run_dir) / "best_model.pt"
 
     for epoch in range(1, epochs + 1):
@@ -109,17 +110,21 @@ def train_augmented(
 
         scheduler.step()
         val = evaluate(model, val_loader, device, criterion=nn.CrossEntropyLoss())
+        # Select on balanced accuracy (see classifier.py) so mixing's tail gains
+        # are not discarded by a head-dominated validation split.
+        val_balanced = balanced_accuracy_score(val["y_true"], val["y_pred"])
         history.append({"epoch": epoch, "train_loss": total_loss / total_samples,
-                        "val_loss": val["loss"], "val_accuracy": val["accuracy"]})
+                        "val_loss": val["loss"], "val_accuracy": val["accuracy"],
+                        "val_balanced_accuracy": val_balanced})
 
-        if val["accuracy"] > best_val_accuracy:
-            best_val_accuracy = val["accuracy"]
+        if val_balanced > best_val_score:
+            best_val_score = val_balanced
             torch.save({"epoch": epoch, "model_state_dict": model.state_dict(),
-                        "val_accuracy": best_val_accuracy}, checkpoint_path)
+                        "val_balanced_accuracy": best_val_score}, checkpoint_path)
 
         print(f"Epoch {epoch:03d}/{epochs:03d} | mode={mode} | "
               f"train_loss={history[-1]['train_loss']:.4f} | "
-              f"val_acc={val['accuracy']:.4f} | best={max(best_val_accuracy, 0.0):.4f}")
+              f"val_acc={val['accuracy']:.4f} val_bal_acc={val_balanced:.4f} | best={max(best_val_score, 0.0):.4f}")
 
     model.load_state_dict(torch.load(checkpoint_path, map_location=device)["model_state_dict"])
     return model, pd.DataFrame(history)

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 import torch
+from sklearn.metrics import balanced_accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -51,9 +52,9 @@ def fit_classifier(
 
     history: list[dict] = []
     # Start below zero so the first epoch always writes a checkpoint; otherwise a
-    # run that never beats 0.0 val accuracy (e.g. a short smoke test) would leave
+    # run that never beats 0.0 val score (e.g. a short smoke test) would leave
     # no best_model.pt for the reload below to find.
-    best_val_accuracy = -1.0
+    best_val_score = -1.0
     checkpoint_path = Path(run_dir) / checkpoint_name
 
     for epoch in range(1, epochs + 1):
@@ -61,6 +62,10 @@ def fit_classifier(
             model, train_loader, criterion, optimizer, device, eval_encoder=eval_encoder
         )
         val = evaluate(model, val_loader, device, criterion=criterion)
+        # Select on BALANCED accuracy (mean per-class recall), not raw accuracy: the
+        # validation split is long-tailed, so raw accuracy is dominated by the head
+        # and would penalise the tail-aware methods (balanced-softmax, cRT).
+        val_balanced = balanced_accuracy_score(val["y_true"], val["y_pred"])
         current_lr = optimizer.param_groups[0]["lr"]
         scheduler.step()
 
@@ -71,19 +76,20 @@ def fit_classifier(
                 "train_accuracy": train_accuracy,
                 "val_loss": val["loss"],
                 "val_accuracy": val["accuracy"],
+                "val_balanced_accuracy": val_balanced,
                 "learning_rate": current_lr,
             }
         )
 
-        if val["accuracy"] > best_val_accuracy:
-            best_val_accuracy = val["accuracy"]
+        if val_balanced > best_val_score:
+            best_val_score = val_balanced
             torch.save({"epoch": epoch, "model_state_dict": model.state_dict(),
-                        "val_accuracy": best_val_accuracy}, checkpoint_path)
+                        "val_balanced_accuracy": best_val_score}, checkpoint_path)
 
         print(
             f"Epoch {epoch:03d}/{epochs:03d} | "
             f"train_loss={train_loss:.4f} train_acc={train_accuracy:.4f} | "
-            f"val_loss={val['loss']:.4f} val_acc={val['accuracy']:.4f} | best={max(best_val_accuracy, 0.0):.4f}"
+            f"val_acc={val['accuracy']:.4f} val_bal_acc={val_balanced:.4f} | best={max(best_val_score, 0.0):.4f}"
         )
 
     model.load_state_dict(torch.load(checkpoint_path, map_location=device)["model_state_dict"])
