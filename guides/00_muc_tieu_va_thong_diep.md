@@ -90,6 +90,24 @@ bảng VLM riêng `outputs/comparison_vlm.csv`.
 **Câu chốt:** *"5 ảnh không đủ để học từ đầu; ta đóng băng một foundation model rồi học <1% tham
 số với một loss nhận biết đuôi — đủ để đóng khoảng cách ở các lớp hiếm."*
 
+### PHASE 3 — Nghiên cứu: loại tri thức ngoài nào cứu đuôi? (`phase3_knowledge_sources.ipynb`)
+**Đây là đóng góp chính.** Câu hỏi: *với đuôi 5 ảnh, tri thức **ngôn ngữ** (LLM), **thị giác thứ
+hai** (DINOv2), hay **sinh dữ liệu** (diffusion) giúp nhiều nhất, và chúng có **bù trừ** không?*
+
+| Expert | Nguồn tri thức |
+|---|---|
+| `cmo` | nội tại (đối chứng from-scratch) |
+| `clip_llm` | ngôn ngữ (LLM-enriched prototypes) |
+| `dino_lift` | thị giác thứ hai (DINOv2) |
+| `lift_clip_diff` | sinh dữ liệu (diffusion feature aug) |
+| `fusion_tailaware` | gộp nhận biết đuôi (kiểm bù trừ) |
+
+Cộng **GLA** (debias foundation model, tổng quát hóa `balanced_softmax`).
+**Đầu ra cần có:** `outputs/knowledge_sources.csv` (bảng theo nhóm-shot — **bảng chính của bài**),
+`outputs/<expert>/metrics.json`. Chi tiết: `04_knowledge_sources.md`.
+**Câu chốt:** *"Mỗi nguồn tri thức mạnh ở một vùng của đuôi; phối hợp đúng cách (nhận biết đuôi +
+debias công bằng) mới khai thác hết — và chứng minh chúng bù trừ nhau."*
+
 ---
 
 ## 5. "Đầu ra" mong muốn cuối cùng (deliverables)

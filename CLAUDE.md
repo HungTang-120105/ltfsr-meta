@@ -57,12 +57,32 @@ in `clip_expert.py`, run once per split). External-knowledge (VLM) track, like C
   zero-shot, <1% params) + `CosineClassifier` (init from text features = semantic init), trained
   with `BalancedSoftmaxLoss`; `train_lift` selects best epoch by balanced val acc.
 
+## Phase 3 — which external knowledge helps the tail? (`notebooks/phase3_knowledge_sources.ipynb`)
+
+The **research-study** track (main contribution). Research question: *for the 5-image tail, which
+external knowledge helps most — language (LLM), a second vision FM (DINOv2), or generative
+(diffusion) — and do they complement each other?* All on cached frozen features.
+
+- `experts/llm_prompts.py` (A): free LLM on Kaggle generates per-class descriptions (cached to
+  `outputs/class_descriptions.json`); `clip_expert.encode_text_prototypes` averages their CLIP
+  embeddings into richer prototypes (CuPL-style) for zero-shot + LIFT head init.
+- `experts/dino_expert.py` (D): frozen **DINOv2** features + LIFT with class-mean (NCM) init (no text encoder).
+- `experts/feature_diffusion.py` (C): tiny class-conditional DDPM over feature vectors synthesises
+  **tail** features (LDMLR-style); LIFT trains on real+synthetic.
+- `experts/gla.py` (B): **Generalized Logit Adjustment** — removes the foundation model's own
+  pretraining label bias (generalises `balanced_softmax`); strength tuned on val, `0` in the grid.
+- `evaluation/fusion.py`: N-expert **tail-aware** fusion (per-shot-group weights, tuned on val;
+  few-group tied to medium since val lacks tail) + `complementarity_report`. Generalises tier/vlm fusion.
+- `cmo` checkpoint = the **from-scratch control** every external source is measured against.
+- Output: `outputs/knowledge_sources.csv` (per-shot-group table — the headline).
+
 ## Notebooks
 
 - `run_all_methods.ipynb` — trains ALL `METHODS` back-to-back, writes `outputs/<method>/`,
   builds `comparison.csv` + comparison/overlay plots. **Primary entry point.**
 - `phase0_reuse.ipynb` — reuse trained checkpoints (ensemble/TTA/tier_fusion/τ-norm/CLIP fusion).
-- `phase2_clip_adapt.ipynb` — adapt frozen CLIP (Tip-Adapter / Tip-Adapter-F / LIFT). Highest VLM track.
+- `phase2_clip_adapt.ipynb` — adapt frozen CLIP (Tip-Adapter / Tip-Adapter-F / LIFT). VLM track.
+- `phase3_knowledge_sources.ipynb` — research study: LLM vs DINOv2 vs diffusion + GLA + fusion.
 - `run_experiment.ipynb` — run a single method (quick look).
 - Smoke-test first: `MAX_TRAIN_SAMPLES=2000, EPOCHS=5`, then full `EPOCHS=200`.
 
@@ -85,12 +105,17 @@ Phase 2 (adapt frozen CLIP): tip_adapter ~0.68–0.72, tip_adapter_f ~0.71–0.7
 
 `guides/00_muc_tieu_va_thong_diep.md` (project goals + message + expected outputs per phase),
 `guides/01_how_to_run.md` (run guide), `guides/02_vlm_fusion.md` (CLIP fusion),
-`guides/03_clip_adaptation.md` (Tip-Adapter + LIFT), `REFACTOR_NOTES.md` (history),
+`guides/03_clip_adaptation.md` (Tip-Adapter + LIFT),
+`guides/04_knowledge_sources.md` (Phase 3 research study: LLM/DINOv2/diffusion + GLA + fusion),
+`REFACTOR_NOTES.md` (history),
 `docs/01–07_*.md` (per-method explanations: 06 = cmo, 07 = CLIP fusion/Tip-Adapter/LIFT).
 
 ## Status
 
-Phase 0 + Phase 1 + Phase 2 + val-split + balanced-selection implemented. Phase 0/1 smoke-tested;
-Phase 2 (Tip-Adapter + LIFT) code-complete and numerically smoke-tested on synthetic features —
-**run `phase2_clip_adapt.ipynb` on Kaggle to get the real numbers**.
-Not committed to git yet. Latest results live in `outputs/comparison.csv`.
+Phase 0 + Phase 1 + Phase 2 + Phase 3 + val-split + balanced-selection implemented. Phase 0/1
+smoke-tested; Phase 2 real numbers obtained (lift ~0.72 with ViT-B/32; Tip-Adapter cache fixed to
+class-balanced). Phase 3 (LLM prototypes / DINOv2 / feature-diffusion / GLA / tail-aware fusion)
+code-complete and numerically smoke-tested on synthetic features —
+**run `phase3_knowledge_sources.ipynb` on Kaggle (GPU + internet) for the real study**.
+Not committed to git yet. Latest results: `outputs/comparison.csv`, `outputs/comparison_vlm.csv`,
+`outputs/knowledge_sources.csv`.

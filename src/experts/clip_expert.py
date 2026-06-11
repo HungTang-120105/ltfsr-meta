@@ -58,11 +58,33 @@ def load_clip(class_names: list[str], device, model_name: str = "ViT-B-32",
     return {
         "model": model,
         "preprocess": preprocess,
+        "tokenizer": tokenizer,        # exposed so callers can encode custom prompts (module A)
         "text_features": text_features,
         # exp() of the trained temperature; image @ text similarities are scaled by
         # this before softmax, so reuse it to keep our logits on CLIP's own scale.
         "logit_scale": float(model.logit_scale.exp().item()),
     }
+
+
+@torch.no_grad()
+def encode_text_prototypes(clip_bundle: dict, prompts_per_class: list[list[str]], device,
+                           batch_size: int = 256) -> torch.Tensor:
+    """Average CLIP text embeddings of several prompts per class -> ``(C, D)`` prototypes.
+
+    ``prompts_per_class[c]`` is a list of sentences describing class ``c`` (e.g. from an
+    LLM, module A). Each is encoded and L2-normalized, the per-class mean is taken and
+    re-normalized. Drop-in replacement for the single-prompt ``text_features``.
+    """
+    model, tokenizer = clip_bundle["model"], clip_bundle["tokenizer"]
+    prototypes = []
+    for prompts in prompts_per_class:
+        feats = []
+        for start in range(0, len(prompts), batch_size):
+            tokens = tokenizer(prompts[start:start + batch_size]).to(device)
+            feats.append(F.normalize(model.encode_text(tokens), dim=-1))
+        mean = torch.cat(feats).mean(dim=0)
+        prototypes.append(F.normalize(mean, dim=0))
+    return torch.stack(prototypes)
 
 
 @torch.no_grad()

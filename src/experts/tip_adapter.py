@@ -32,10 +32,19 @@ from src.trainers.losses import BalancedSoftmaxLoss
 
 
 def build_cache(train_features: torch.Tensor, train_labels: torch.Tensor,
-                num_classes: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """Cache keys (training features) and values (one-hot labels)."""
+                num_classes: int, balanced: bool = True) -> tuple[torch.Tensor, torch.Tensor]:
+    """Cache keys (training features) and values (labels).
+
+    ``balanced=True`` (the long-tail default) divides each class column by its key
+    count, so the cache vote is the **mean** affinity to a class, not the **sum**.
+    Without it a head class with 500 keys out-votes a tail class with 5 purely by
+    count, collapsing every prediction onto the head. Set False for the original
+    (balanced few-shot) Tip-Adapter behaviour.
+    """
     keys = train_features
     values = F.one_hot(train_labels.long(), num_classes).float()
+    if balanced:
+        values = values / values.sum(dim=0).clamp_min(1.0)   # column c -> 1 / count(c)
     return keys, values
 
 
@@ -45,8 +54,9 @@ def cache_logits(query: torch.Tensor, keys: torch.Tensor, values: torch.Tensor,
 
     ``query`` and ``keys`` are unit-norm, so ``query @ keys.T`` is cosine
     similarity in ``[-1, 1]``. ``exp(-beta * (1 - sim))`` turns it into a sharp,
-    positive affinity (``beta`` controls sharpness); multiplying by the one-hot
-    ``values`` sums each neighbour's affinity into its class.
+    positive affinity (``beta`` controls sharpness); multiplying by ``values``
+    aggregates each neighbour's affinity into its class (a per-class mean when the
+    cache was built balanced, a sum otherwise).
     """
     affinity = query @ keys.t()
     return ((-beta * (1.0 - affinity)).exp()) @ values
@@ -67,8 +77,10 @@ def tune_alpha_beta(val_query: torch.Tensor, keys: torch.Tensor, values: torch.T
     """
     from src.evaluation.metrics import balanced_accuracy
 
-    alphas = np.linspace(0.5, 5.0, 10) if alphas is None else alphas
-    betas = np.linspace(1.0, 7.0, 7) if betas is None else betas
+    # Balanced cache logits are per-class means in [0, 1]; CLIP logits live on the
+    # ~100 logit-scale, so alpha must reach into the tens to matter — search wide.
+    alphas = np.array([1, 2, 5, 10, 20, 35, 50, 75, 100], dtype=float) if alphas is None else alphas
+    betas = np.array([1, 2, 3, 5, 7], dtype=float) if betas is None else betas
     best = (1.0, 5.0, -1.0)
     for beta in betas:
         cache = cache_logits(val_query, keys, values, beta)
