@@ -83,6 +83,7 @@ Phase 2 (adapt frozen CLIP): tip_adapter ~0.68–0.72, tip_adapter_f ~0.71–0.7
 
 ## More detail
 
+`guides/00_muc_tieu_va_thong_diep.md` (project goals + message + expected outputs per phase),
 `guides/01_how_to_run.md` (run guide), `guides/02_vlm_fusion.md` (CLIP fusion),
 `guides/03_clip_adaptation.md` (Tip-Adapter + LIFT), `REFACTOR_NOTES.md` (history),
 `docs/01–05_*.md` (per-method explanations).
