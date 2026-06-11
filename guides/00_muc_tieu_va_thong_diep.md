@@ -111,4 +111,5 @@ số với một loss nhận biết đuôi — đủ để đóng khoảng cách
 - Trình bày tách 2 bảng, nêu được *thông điệp* chứ không chỉ con số.
 
 > Chi tiết cách chạy: `01_how_to_run.md`. Giải thích CLIP fusion: `02_vlm_fusion.md`.
-> Giải thích Tip-Adapter + LIFT: `03_clip_adaptation.md`. Giải thích từng method: `docs/01–05_*.md`.
+> Giải thích Tip-Adapter + LIFT: `03_clip_adaptation.md`. Giải thích từng method: `docs/01–07_*.md`
+> (06 = cmo, 07 = CLIP fusion/Tip-Adapter/LIFT).
