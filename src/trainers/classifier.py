@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-from sklearn.metrics import balanced_accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader
 
+from src.evaluation.metrics import balanced_accuracy
 from src.trainers.engine import evaluate, train_one_epoch
 
 
@@ -65,7 +65,7 @@ def fit_classifier(
         # Select on BALANCED accuracy (mean per-class recall), not raw accuracy: the
         # validation split is long-tailed, so raw accuracy is dominated by the head
         # and would penalise the tail-aware methods (balanced-softmax, cRT).
-        val_balanced = balanced_accuracy_score(val["y_true"], val["y_pred"])
+        val_balanced = balanced_accuracy(val["y_true"], val["y_pred"])
         current_lr = optimizer.param_groups[0]["lr"]
         scheduler.step()
 

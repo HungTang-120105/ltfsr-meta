@@ -13,10 +13,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import balanced_accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader
 
+from src.evaluation.metrics import balanced_accuracy
 from src.datasets.augment import cmo_cutmix, cutmix_data, mix_criterion, mixup_data
 from src.datasets.cifar_lt import make_balanced_loader, make_loader
 from src.models.baseline import BaselineClassifier
@@ -112,7 +112,7 @@ def train_augmented(
         val = evaluate(model, val_loader, device, criterion=nn.CrossEntropyLoss())
         # Select on balanced accuracy (see classifier.py) so mixing's tail gains
         # are not discarded by a head-dominated validation split.
-        val_balanced = balanced_accuracy_score(val["y_true"], val["y_pred"])
+        val_balanced = balanced_accuracy(val["y_true"], val["y_pred"])
         history.append({"epoch": epoch, "train_loss": total_loss / total_samples,
                         "val_loss": val["loss"], "val_accuracy": val["accuracy"],
                         "val_balanced_accuracy": val_balanced})

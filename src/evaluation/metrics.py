@@ -9,6 +9,8 @@ dependency) so the code stays short and trustworthy.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
@@ -19,6 +21,21 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
+
+
+def balanced_accuracy(y_true, y_pred) -> float:
+    """``balanced_accuracy_score`` without the harmless long-tail warning.
+
+    On our long-tail validation split some tail classes have **0** images, so the
+    model can predict a class that never appears in ``y_true``. sklearn then warns
+    ``y_pred contains classes not in y_true`` — but balanced accuracy only averages
+    recall over the classes that *are* present, so the score is still correct. We
+    silence *only* that one message (every epoch of training would otherwise log
+    it) and let any other sklearn warning through.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="y_pred contains classes not in y_true")
+        return float(balanced_accuracy_score(y_true, y_pred))
 
 
 def per_class_recall(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int) -> np.ndarray:
@@ -71,7 +88,7 @@ def compute_metrics(
 
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "balanced_accuracy": balanced_accuracy(y_true, y_pred),
         "macro_precision": float(precision_score(y_true, y_pred, average="macro", zero_division=0)),
         "macro_recall": float(recall_score(y_true, y_pred, average="macro", zero_division=0)),
         "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),

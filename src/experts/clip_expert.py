@@ -55,7 +55,47 @@ def load_clip(class_names: list[str], device, model_name: str = "ViT-B-32",
     prompts = [prompt.format(name.replace("_", " ")) for name in class_names]
     with torch.no_grad():
         text_features = F.normalize(model.encode_text(tokenizer(prompts).to(device)), dim=-1)
-    return {"model": model, "preprocess": preprocess, "text_features": text_features}
+    return {
+        "model": model,
+        "preprocess": preprocess,
+        "text_features": text_features,
+        # exp() of the trained temperature; image @ text similarities are scaled by
+        # this before softmax, so reuse it to keep our logits on CLIP's own scale.
+        "logit_scale": float(model.logit_scale.exp().item()),
+    }
+
+
+@torch.no_grad()
+def encode_clip_features(dataset, clip_bundle: dict, device, batch_size: int = 128,
+                         num_workers: int = 2) -> tuple[torch.Tensor, torch.Tensor]:
+    """L2-normalized CLIP image features for ``dataset`` -> (features ``(N, D)``, labels).
+
+    Returned as CPU tensors so they can be cached once and reused by every adapter
+    (Tip-Adapter, LIFT) without re-running the frozen backbone. Same dataset-copy
+    trick as :func:`clip_probs` so CLIP's own preprocessing is used.
+    """
+    model = clip_bundle["model"]
+    clip_dataset = copy.copy(dataset)
+    clip_dataset.transform = clip_bundle["preprocess"]
+    loader = DataLoader(clip_dataset, batch_size=batch_size, shuffle=False,
+                        num_workers=num_workers, pin_memory=torch.cuda.is_available())
+
+    all_features, all_labels = [], []
+    for images, targets in loader:
+        features = F.normalize(model.encode_image(images.to(device)), dim=-1)
+        all_features.append(features.float().cpu())
+        all_labels.append(targets)
+    return torch.cat(all_features), torch.cat(all_labels)
+
+
+def clip_zero_shot_logits(features: torch.Tensor, clip_bundle: dict) -> torch.Tensor:
+    """Zero-shot logits = ``logit_scale * features @ text_features^T`` (no softmax).
+
+    ``features`` and ``text_features`` are unit-norm, so this is scaled cosine
+    similarity — the same quantity :func:`clip_probs` feeds to softmax.
+    """
+    text_features = clip_bundle["text_features"].to(features.device).float()
+    return clip_bundle["logit_scale"] * features @ text_features.t()
 
 
 @torch.no_grad()
