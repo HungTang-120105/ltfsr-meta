@@ -25,7 +25,7 @@ def load_classifier(run_dir: Path, num_classes: int, device: torch.device,
     otherwise the architecture will not match the saved weights.
     """
     model = BaselineClassifier(num_classes=num_classes, pretrained=pretrained).to(device)
-    state = torch.load(Path(run_dir) / checkpoint_name, map_location=device)
+    state = torch.load(Path(run_dir) / checkpoint_name, map_location=device, weights_only=False)
     model.load_state_dict(state["model_state_dict"])
     model.eval()
     return model

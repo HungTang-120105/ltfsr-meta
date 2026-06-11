@@ -82,7 +82,7 @@ def fit_classifier(
         )
 
         if val_balanced > best_val_score:
-            best_val_score = val_balanced
+            best_val_score = float(val_balanced)  # python float: keeps the checkpoint weights-only safe
             torch.save({"epoch": epoch, "model_state_dict": model.state_dict(),
                         "val_balanced_accuracy": best_val_score}, checkpoint_path)
 
@@ -92,5 +92,5 @@ def fit_classifier(
             f"val_acc={val['accuracy']:.4f} val_bal_acc={val_balanced:.4f} | best={max(best_val_score, 0.0):.4f}"
         )
 
-    model.load_state_dict(torch.load(checkpoint_path, map_location=device)["model_state_dict"])
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=False)["model_state_dict"])
     return model, pd.DataFrame(history)

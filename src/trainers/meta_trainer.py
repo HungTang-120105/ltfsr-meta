@@ -117,7 +117,7 @@ def train_meta(
               f"train_loss={history[-1]['train_loss']:.4f} train_acc={history[-1]['train_accuracy']:.4f} | "
               f"val_acc={val_accuracy:.4f} | best={max(best_accuracy, 0.0):.4f}")
 
-    encoder.load_state_dict(torch.load(checkpoint_path, map_location=device)["model_state_dict"])
+    encoder.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=False)["model_state_dict"])
     return encoder, pd.DataFrame(history)
 
 
