@@ -66,6 +66,23 @@ Muốn điểm cao hơn (nặng hơn): đổi `CLIP_MODEL = "ViT-B-16"` hoặc `
 - Demo: lấy một ảnh lớp hiếm, in dự đoán `clip_only` (có thể sai) vs `lift` (đúng), và in
   `gate` của adapter + `few_shot_accuracy` tăng dần qua 4 phương pháp.
 
+## 5b. (tùy chọn) Ablation độ-sâu fine-tuning — có nên train CLIP không?
+
+Mặc định project **đóng băng CLIP** (chỉ train adapter/head trên feature). Để trả lời chính diện
+*"thử fine-tune CLIP thì sao?"*, bật `RUN_FT_ABLATION = True` trong `phase2_clip_adapt.ipynb`
+(mục 6b). Nó quét độ sâu thích nghi:
+
+| Mốc | Train gì | Tham số |
+|---|---|---|
+| `ft_linear_probe` | chỉ head tuyến tính (backbone đóng băng) | ít |
+| `ft_last_block` | head + block transformer cuối + LN | vừa |
+| `ft_full_ft` | toàn bộ visual encoder | nhiều |
+
+Train trên **ảnh** (backprop qua ViT, **không cache** → NẶNG, vài phút/epoch), Balanced Softmax,
+chọn trên val. **Kỳ vọng:** đuôi tốt ở mức nhẹ rồi **giảm khi full-FT** — đúng luận điểm LIFT
+("heavy fine-tuning hurts the tail"), chứng minh bằng số rằng **đóng băng + adapter là đúng**, không
+phải ta lười. Đây là **nơi DUY NHẤT** trong project train trọng số CLIP.
+
 ## 6. Lưu ý
 - Mọi phương pháp dùng **cùng** feature đã trích (cùng thứ tự mẫu) nên so sánh công bằng.
 - Cache của Tip-Adapter lệch về head (head nhiều khoá hơn) → ta chọn `alpha`/`beta` trên

@@ -56,6 +56,10 @@ in `clip_expert.py`, run once per split). External-knowledge (VLM) track, like C
 - `experts/lift.py`: **LIFT-style** (ICML 2024). `ResidualAdapter` (gate=0 init → starts at
   zero-shot, <1% params) + `CosineClassifier` (init from text features = semantic init), trained
   with `BalancedSoftmaxLoss`; `train_lift` selects best epoch by balanced val acc.
+- `experts/clip_finetune.py`: **fine-tuning-depth ablation** (`linear_probe`/`last_block`/`full_ft`)
+  — trains the ViT on images (no caching, HEAVY), `RUN_FT_ABLATION` toggle in phase2 (default off).
+  Shows "heavy FT hurts the tail" → justifies the frozen design. NOTE: this is the ONLY place the
+  CLIP backbone weights are trained; everything else freezes CLIP and adapts cached features.
 
 ## Phase 3 — which external knowledge helps the tail? (`notebooks/phase3_knowledge_sources.ipynb`)
 
