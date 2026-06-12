@@ -87,11 +87,18 @@ def train_lift(train_features: torch.Tensor, train_labels: torch.Tensor,
                text_features: torch.Tensor, logit_scale: float,
                class_counts: list[int], num_classes: int, device,
                epochs: int = 50, lr: float = 1e-3, weight_decay: float = 1e-2,
-               batch_size: int = 256, bottleneck: int = 64) -> tuple[LIFTModel, dict]:
+               batch_size: int = 256, bottleneck: int = 64,
+               mixup_alpha: float = 0.0) -> tuple[LIFTModel, dict]:
     """Train the adapter + cosine head; return the best-by-val-balanced-acc model.
 
     Only the adapter and the cosine head are trainable (the backbone is frozen and
     already baked into the cached features), so this is a few seconds per epoch.
+
+    ``mixup_alpha > 0`` turns on **tail-aware feature mixup** (see
+    ``src.experts.feature_mixup``): each batch is convex-mixed with a class-balanced,
+    tail-rich partner and trained with a soft two-label loss — the CMO idea in feature
+    space. ``0`` (default) keeps the plain hard-label training, so existing callers are
+    unchanged.
     """
     model = LIFTModel(text_features.to(device), logit_scale, bottleneck).to(device)
     criterion = BalancedSoftmaxLoss(class_counts).to(device)
@@ -100,12 +107,22 @@ def train_lift(train_features: torch.Tensor, train_labels: torch.Tensor,
     dataset = torch.utils.data.TensorDataset(train_features, train_labels.long())
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+    if mixup_alpha > 0:
+        from src.experts.feature_mixup import mixup_batch, tail_rich_weights
+        partner_w = tail_rich_weights(train_labels, num_classes)
+
     best_state, best_val, history = copy.deepcopy(model.state_dict()), -1.0, []
     for epoch in range(epochs):
         model.train()
         for features, labels in loader:
-            logits = model(features.to(device))
-            loss = criterion(logits, labels.to(device))
+            features, labels = features.to(device), labels.to(device)
+            if mixup_alpha > 0:
+                features, y_a, y_b, lam = mixup_batch(features, labels, train_features,
+                                                      train_labels.long(), partner_w, mixup_alpha)
+                logits = model(features)
+                loss = lam * criterion(logits, y_a) + (1 - lam) * criterion(logits, y_b)
+            else:
+                loss = criterion(model(features), labels)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

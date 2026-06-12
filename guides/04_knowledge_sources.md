@@ -25,10 +25,17 @@ Câu hỏi này hay vì nó cần đủ 3 thứ, và cả ba đều tái dùng p
 | `clip_llm` | **ngôn ngữ** | LLM sinh mô tả lớp → prototype CLIP giàu hơn (CuPL, ICCV'23) |
 | `dino_lift` | **thị giác thứ 2** | DINOv2 (tự giám sát, không ngôn ngữ) + LIFT, init bằng class-mean |
 | `lift_clip_diff` | **sinh dữ liệu** | diffusion sinh feature đuôi → train LIFT trên real+synthetic (LDMLR, '24) |
+| `lift_clip_mixup` | **augment (cmo-style)** | tail-aware feature mixup → train LIFT (ý tưởng `cmo` chuyển vào feature space) |
 | `lift_clip` | vision-language | LIFT trên CLIP (mốc "external" mạnh) |
 
 Cộng **GLA** (gỡ bias pretraining của CLIP, NeurIPS'23) và **fusion nhận biết đuôi** (trọng số
 riêng cho many/medium/few, chọn trên val).
+
+> **Tái dùng phương pháp cũ trong track hiện đại:** `balanced_softmax` (Method 2) **đã là loss
+> huấn luyện** của *mọi* expert LIFT/Tip-Adapter-F (`BalancedSoftmaxLoss`), và GLA tổng quát hóa
+> nó. `cmo` (Method 6) được chuyển vào feature space thành `lift_clip_mixup`. So `lift_clip_mixup`
+> (trộn feature thật) với `lift_clip_diff` (sinh feature) trả lời: *augment kiểu nào giúp đuôi hơn?*
+> Bật/tắt bằng `USE_MIXUP` / `MIXUP_ALPHA`.
 
 ## 3. Cài đặt & cách chạy
 

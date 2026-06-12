@@ -121,8 +121,10 @@ def train_contrastive(
         pretrain_lr, temperature, pretrained, image_size=image_size,
     )
 
-    # Stage 2: cRT on the frozen contrastive encoder.
-    classifier = BaselineClassifier(num_classes=num_classes, pretrained=False).to(device)
+    # Stage 2: cRT on the frozen contrastive encoder. Must use the SAME stem as stage 1
+    # (pretrained -> 7x7 ImageNet stem, else 3x3 CIFAR stem), or the encoder weights
+    # won't load into the classifier.
+    classifier = BaselineClassifier(num_classes=num_classes, pretrained=pretrained).to(device)
     classifier.encoder.load_state_dict(encoder_model.encoder.state_dict())
 
     classifier, probe_history = rebalance_classifier(

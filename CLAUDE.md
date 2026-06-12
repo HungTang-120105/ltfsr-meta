@@ -69,6 +69,9 @@ external knowledge helps most — language (LLM), a second vision FM (DINOv2), o
 - `experts/dino_expert.py` (D): frozen **DINOv2** features + LIFT with class-mean (NCM) init (no text encoder).
 - `experts/feature_diffusion.py` (C): tiny class-conditional DDPM over feature vectors synthesises
   **tail** features (LDMLR-style); LIFT trains on real+synthetic.
+- `experts/feature_mixup.py`: tail-aware feature mixup = **cmo** moved into feature space; enabled
+  via `train_lift(..., mixup_alpha>0)` (soft two-label BalancedSoftmax). `balanced_softmax` is
+  already the LIFT/Tip-Adapter-F training loss, so the old data+loss methods both live on here.
 - `experts/gla.py` (B): **Generalized Logit Adjustment** — removes the foundation model's own
   pretraining label bias (generalises `balanced_softmax`); strength tuned on val, `0` in the grid.
 - `evaluation/fusion.py`: N-expert **tail-aware** fusion (per-shot-group weights, tuned on val;
