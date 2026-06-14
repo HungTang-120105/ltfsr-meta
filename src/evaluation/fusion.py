@@ -138,3 +138,70 @@ def complementarity_report(expert_probs: dict, y_true: np.ndarray, num_classes: 
         report[name] = {k: m[k] for k in ("balanced_accuracy", "many_shot_accuracy",
                                           "medium_shot_accuracy", "few_shot_accuracy")}
     return report
+
+
+# ---------------------------------------------------------------------------
+# Greedy ensemble selection (added below; does not touch the functions above).
+# ---------------------------------------------------------------------------
+def greedy_group_weights(val_probs: list[np.ndarray], y_val: np.ndarray, shot_groups: dict,
+                         num_classes: int, max_iters: int = 25) -> tuple[dict, float]:
+    """Per-shot-group **greedy ensemble selection** (Caruana et al., ICML 2004).
+
+    For each group, start from the single best expert and **only add an expert (with
+    replacement) if it improves that group's balanced val accuracy** — so the result is
+    ``>= best single expert`` on val *by construction* (monotonic). This is the safe
+    alternative to ``tune_group_weights`` when one expert dominates: the weighted grid can
+    overfit a small val group and regress on test (e.g. the medium group), whereas greedy
+    selection never drops below the best single on the val it selects on. "Greedy soup"
+    (Wortsman et al., 2022) is the modern incarnation of the same add-if-it-helps rule.
+
+    Returns ``(group_weights dict, val_balanced_acc)`` — same shape as
+    ``tune_group_weights``, so it plugs straight into :func:`fuse_group`. As there, the
+    few group (usually absent from a long-tail val) inherits the medium weights.
+    """
+    n = len(val_probs)
+    uniform = tuple([1.0 / n] * n)
+    eye = np.eye(n)
+    class_group = np.empty(num_classes, dtype=object)
+    for group, ids in shot_groups.items():
+        for c in ids:
+            class_group[c] = group
+    present = set(np.unique(y_val).tolist())
+
+    def score(group, weight, ids):
+        # Same scoring convention as tune_group_weights: this group's weight on its
+        # columns, uniform elsewhere, balanced accuracy on this group's val classes.
+        trial = {g: (weight if g == group else uniform) for g in ("many", "medium", "few")}
+        fused = fuse_group(val_probs, trial, class_group)
+        mask = np.isin(y_val, ids)
+        return balanced_accuracy(y_val[mask], fused[mask].argmax(1))
+
+    group_weights = {}
+    for group in ("many", "medium", "few"):
+        ids = [c for c in shot_groups.get(group, []) if c in present]
+        if not ids:
+            continue
+        singles = [score(group, tuple(eye[e].tolist()), ids) for e in range(n)]
+        counts = eye[int(np.argmax(singles))].copy()      # start from the best single expert
+        current = max(singles)
+        for _ in range(max_iters):
+            best_gain, pick = current, None
+            for e in range(n):
+                cand = counts.copy()
+                cand[e] += 1.0
+                s = score(group, tuple((cand / cand.sum()).tolist()), ids)
+                if s > best_gain:
+                    best_gain, pick = s, e
+            if pick is None:                               # nothing improves -> stop (monotonic)
+                break
+            counts[pick] += 1.0
+            current = best_gain
+        group_weights[group] = tuple((counts / counts.sum()).tolist())
+
+    if "medium" in group_weights:
+        group_weights.setdefault("few", group_weights["medium"])
+    for group in ("many", "medium", "few"):
+        group_weights.setdefault(group, uniform)
+
+    fused = fuse_group(val_probs, group_weights, class_group)
+    return group_weights, float(balanced_accuracy(y_val, fused.argmax(1)))

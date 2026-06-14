@@ -24,12 +24,19 @@ Câu hỏi này hay vì nó cần đủ 3 thứ, và cả ba đều tái dùng p
 | `cmo` | **nội tại** (dữ liệu của ta) | mô hình from-scratch tốt nhất — **đối chứng** |
 | `clip_llm` | **ngôn ngữ** | LLM sinh mô tả lớp → prototype CLIP giàu hơn (CuPL, ICCV'23) |
 | `dino_lift` | **thị giác thứ 2** | DINOv2 (tự giám sát, không ngôn ngữ) + LIFT, init bằng class-mean |
+| `dino_linear_probe` | (baseline đo) | DINOv2 + Linear + CrossEntropy thường — để đo *phần LIFT đóng góp* so với backbone trần (không vào fusion) |
 | `lift_clip_diff` | **sinh dữ liệu** | diffusion sinh feature đuôi → train LIFT trên real+synthetic (LDMLR, '24) |
 | `lift_clip_mixup` | **augment (cmo-style)** | tail-aware feature mixup → train LIFT (ý tưởng `cmo` chuyển vào feature space) |
 | `lift_clip` | vision-language | LIFT trên CLIP (mốc "external" mạnh) |
 
 Cộng **GLA** (gỡ bias pretraining của CLIP, NeurIPS'23) và **fusion nhận biết đuôi** (trọng số
 riêng cho many/medium/few, chọn trên val).
+
+> **Hai biến thể fusion** (mục 11 & 11b): `fusion_tailaware` (trọng số trộn theo lưới) và
+> `fusion_greedy` (**greedy ensemble selection**, Caruana ICML'04 / greedy soup Wortsman'22:
+> bắt đầu từ expert đơn tốt nhất mỗi nhóm, chỉ thêm expert nếu cải thiện val → **≥ expert đơn
+> tốt nhất trên val theo cách xây dựng**, không tụt ở many/medium như lưới có thể bị khi một
+> expert (DINOv2) áp đảo). `fusion_greedy` là bản thêm vào, không sửa fusion cũ.
 
 > **Tái dùng phương pháp cũ trong track hiện đại:** `balanced_softmax` (Method 2) **đã là loss
 > huấn luyện** của *mọi* expert LIFT/Tip-Adapter-F (`BalancedSoftmaxLoss`), và GLA tổng quát hóa
