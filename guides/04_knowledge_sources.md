@@ -24,7 +24,8 @@ Câu hỏi này hay vì nó cần đủ 3 thứ, và cả ba đều tái dùng p
 | `cmo` | **nội tại** (dữ liệu của ta) | mô hình from-scratch tốt nhất — **đối chứng** |
 | `clip_llm` | **ngôn ngữ** | LLM sinh mô tả lớp → prototype CLIP giàu hơn (CuPL, ICCV'23) |
 | `dino_lift` | **thị giác thứ 2** | DINOv2 (tự giám sát, không ngôn ngữ) + LIFT, init bằng class-mean |
-| `dino_linear_probe` | (baseline đo) | DINOv2 + Linear + CrossEntropy thường — để đo *phần LIFT đóng góp* so với backbone trần (không vào fusion) |
+| `dino_linear_probe` | (ablation) | DINOv2 + Linear + **CE** — backbone trần (đầu head ngây thơ); thường đuôi sụp |
+| `dino_linear_probe_bs` | (ablation) | DINOv2 + Linear + **Balanced Softmax** — tách riêng đóng góp của *loss nhận-biết-đuôi* |
 | `lift_clip_diff` | **sinh dữ liệu** | diffusion sinh feature đuôi → train LIFT trên real+synthetic (LDMLR, '24) |
 | `lift_clip_mixup` | **augment (cmo-style)** | tail-aware feature mixup → train LIFT (ý tưởng `cmo` chuyển vào feature space) |
 | `lift_clip` | vision-language | LIFT trên CLIP (mốc "external" mạnh) |
@@ -71,6 +72,9 @@ Mở `knowledge_sources.csv` và đọc theo 4 ý:
    Nếu có ⇒ các nguồn **bổ sung** cho nhau, không trùng lặp.
 3. **Có cần mượn ngoài không?** mọi expert ngoài so với `cmo` (đối chứng from-scratch).
 4. **Debias có cần không?** xem bảng before→after của GLA ở mục 10.
+5. **Đóng góp của ta vs backbone (ablation DINOv2)?** chuỗi `dino_linear_probe` (CE) → `dino_linear_probe_bs`
+   (+Balanced Softmax) → `dino_lift` (+adapter+cosine+class-mean init). So `few_shot` qua 3 mốc:
+   chênh (bs − ce) = công của *loss nhận-biết-đuôi*; chênh (lift − bs) = công của *kiến trúc adapter/head*.
 
 ## 5. Cách trình bày
 - Một câu chuyện 1 mạch: *"Đuôi 5 ảnh học từ đầu chạm trần (`cmo`). Ta thử mượn 3 loại tri thức
