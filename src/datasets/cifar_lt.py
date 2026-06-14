@@ -151,6 +151,20 @@ def load_class_counts(data_dir: Path) -> dict[int, int]:
     return {int(class_id): int(count) for class_id, count in raw.items()}
 
 
+def load_class_names(data_dir: Path) -> list[str]:
+    """Readable class names in label order (label ``i`` -> ``names[i]``).
+
+    Reads ``class_names.json`` if the dataset provides one (e.g. CUB-200-LT). This is
+    what lets the CLIP / LLM prompts work on any dataset — only the names file changes.
+    Falls back to the built-in CIFAR-100 names for older CIFAR folders without the file.
+    """
+    path = Path(data_dir) / "class_names.json"
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    from src.experts.clip_expert import CIFAR100_CLASSES
+    return CIFAR100_CLASSES
+
+
 def split_shot_groups(
     class_counts: dict[int, int],
     many_threshold: int = 100,

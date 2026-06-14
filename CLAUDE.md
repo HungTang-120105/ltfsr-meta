@@ -16,6 +16,11 @@ clear, reportable comparison of long-tail methods (student research project, run
   **model selection**; each class keeps ≥1 train image (tail classes keep all 5, so val may
   contain 0 tail). **Test is never used for selection** — only the final report.
   Helpers: `split_indices_by_class`, `subset` in `src/datasets/cifar_lt.py`.
+- **Multi-dataset**: any dataset in the ImageFolder LT layout (`train/class_XXX`, `test/class_XXX`,
+  `class_counts.json`, `class_names.json`) works — only data-reading differs. `load_class_names`
+  reads names for CLIP/LLM (falls back to CIFAR-100). `data/prepare_cub_lt.py` builds **CUB-200-LT**
+  (fine-grained, IF=10, names work for CLIP). Phase 2/3 notebooks auto-derive `NUM_CLASSES`/`CLASS_NAMES`
+  + take `MANY_THRESHOLD`/`FEW_THRESHOLD` (CUB: 15/6). See `guides/05_new_dataset.md`.
 - **Model selection = best checkpoint by BALANCED accuracy on val** (val is long-tail-shaped,
   so raw accuracy is head-biased and would penalise tail-aware methods). See `classifier.py`.
 
@@ -114,6 +119,7 @@ Phase 2 (adapt frozen CLIP): tip_adapter ~0.68–0.72, tip_adapter_f ~0.71–0.7
 `guides/01_how_to_run.md` (run guide), `guides/02_vlm_fusion.md` (CLIP fusion),
 `guides/03_clip_adaptation.md` (Tip-Adapter + LIFT),
 `guides/04_knowledge_sources.md` (Phase 3 research study: LLM/DINOv2/diffusion + GLA + fusion),
+`guides/05_new_dataset.md` (multi-dataset: ImageFolder LT layout + `class_names.json`; CUB-200-LT),
 `REFACTOR_NOTES.md` (history),
 `docs/01–07_*.md` (per-method explanations: 06 = cmo, 07 = CLIP fusion/Tip-Adapter/LIFT).
 
