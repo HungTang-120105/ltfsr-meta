@@ -34,18 +34,21 @@ CIFAR_STD = (0.2673, 0.2564, 0.2762)
 def build_transforms(train: bool, image_size: int = 32) -> transforms.Compose:
     """CIFAR augmentation for training; plain normalisation for eval.
 
-    ``image_size`` stays 32 for the main from-scratch setup. Set it to 224 for the
-    optional pretrained-ImageNet setup, which needs the larger input
-    (``build_encoder(pretrained=True)``).
+    ``image_size`` stays 32 for the main from-scratch CIFAR setup. For datasets whose
+    images are larger / **variable-sized** (e.g. CUB-200), set it to 64/224: eval forces a
+    fixed ``(image_size, image_size)`` square so a batch of differently-shaped images can
+    collate (a plain ``Resize(int)`` keeps the aspect ratio → ragged tensors → DataLoader
+    error). The ``image_size == 32`` path is unchanged, so CIFAR results are identical.
     """
-    resize = [] if image_size == 32 else [transforms.Resize(image_size)]
     if train:
-        steps = resize + [
-            transforms.RandomCrop(image_size, padding=image_size // 8),
-            transforms.RandomHorizontalFlip(),
-        ]
+        if image_size == 32:                       # CIFAR-native (already 32x32 square)
+            steps = [transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip()]
+        else:                                      # arbitrary-size inputs -> square crop
+            steps = [transforms.RandomResizedCrop(image_size, scale=(0.5, 1.0)),
+                     transforms.RandomHorizontalFlip()]
     else:
-        steps = resize
+        # Force an exact square size (no-op for 32x32 CIFAR; fixes ragged CUB batches).
+        steps = [transforms.Resize((image_size, image_size))]
     steps += [transforms.ToTensor(), transforms.Normalize(CIFAR_MEAN, CIFAR_STD)]
     return transforms.Compose(steps)
 
