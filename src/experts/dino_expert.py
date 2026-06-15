@@ -22,6 +22,7 @@ import copy
 
 import torch
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -47,13 +48,17 @@ def load_dino(device, model_name: str = "dinov2_vits14") -> dict:
 
 @torch.no_grad()
 def encode_dino_features(dataset, dino_bundle: dict, device, batch_size: int = 128,
-                         num_workers: int = 2) -> tuple[torch.Tensor, torch.Tensor]:
+                         num_workers: int = 2, multi_gpu: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
     """L2-normalized DINOv2 CLS features for ``dataset`` -> (features ``(N, D)``, labels).
 
     Same dataset-copy trick as the CLIP expert: swap in DINOv2's preprocessing so the
-    caller's dataset is untouched. Returned on CPU for caching.
+    caller's dataset is untouched. Returned on CPU for caching. ``multi_gpu=True`` splits
+    each batch across all available GPUs (forward-only; DINOv2's ``forward`` already
+    returns the CLS feature, so DataParallel wraps it directly).
     """
     model = dino_bundle["model"]
+    if multi_gpu and torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
     dino_dataset = copy.copy(dataset)
     dino_dataset.transform = dino_bundle["preprocess"]
     loader = DataLoader(dino_dataset, batch_size=batch_size, shuffle=False,

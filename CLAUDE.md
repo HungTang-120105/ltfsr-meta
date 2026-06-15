@@ -90,8 +90,12 @@ external knowledge helps most — language (LLM), a second vision FM (DINOv2), o
 
 ## Notebooks
 
+- `run_pipeline.ipynb` — **all 4 phases in one file** with toggles (`RUN_PHASE1/0/2/3`). Each phase
+  is a function (isolated scope, no var collisions); shared config on top; `USE_MULTI_GPU` splits
+  feature-extraction batches across GPUs (Kaggle 2×T4). Runs Phase 1→0→2→3 in one session so cmo
+  checkpoint flows to 0/3. For CUB: toggle off 1/0, set thresholds 15/6, `USE_CMO=False`.
 - `run_all_methods.ipynb` — trains ALL `METHODS` back-to-back, writes `outputs/<method>/`,
-  builds `comparison.csv` + comparison/overlay plots. **Primary entry point.**
+  builds `comparison.csv` + comparison/overlay plots. (The standalone Phase-1 notebook.)
 - `phase0_reuse.ipynb` — reuse trained checkpoints (ensemble/TTA/tier_fusion/τ-norm/CLIP fusion).
 - `phase2_clip_adapt.ipynb` — adapt frozen CLIP (Tip-Adapter / Tip-Adapter-F / LIFT). VLM track.
 - `phase3_knowledge_sources.ipynb` — research study: LLM vs DINOv2 vs diffusion + GLA + fusion.

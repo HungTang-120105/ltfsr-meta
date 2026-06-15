@@ -20,7 +20,27 @@ import copy
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader
+
+
+class _ImageForward(nn.Module):
+    """Expose ``clip_model.encode_image`` as ``forward`` so ``nn.DataParallel`` can split
+    a batch across multiple GPUs (DataParallel only parallelises ``forward``)."""
+
+    def __init__(self, clip_model: nn.Module) -> None:
+        super().__init__()
+        self.clip_model = clip_model
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        return self.clip_model.encode_image(images)
+
+
+def _maybe_data_parallel(module: nn.Module, multi_gpu: bool) -> nn.Module:
+    """Wrap in DataParallel only when asked AND >1 CUDA device is present (else no-op)."""
+    if multi_gpu and torch.cuda.device_count() > 1:
+        return nn.DataParallel(module)
+    return module
 
 CIFAR100_CLASSES = [
     "apple", "aquarium_fish", "baby", "bear", "beaver", "bed", "bee", "beetle",
@@ -89,14 +109,17 @@ def encode_text_prototypes(clip_bundle: dict, prompts_per_class: list[list[str]]
 
 @torch.no_grad()
 def encode_clip_features(dataset, clip_bundle: dict, device, batch_size: int = 128,
-                         num_workers: int = 2) -> tuple[torch.Tensor, torch.Tensor]:
+                         num_workers: int = 2, multi_gpu: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
     """L2-normalized CLIP image features for ``dataset`` -> (features ``(N, D)``, labels).
 
     Returned as CPU tensors so they can be cached once and reused by every adapter
     (Tip-Adapter, LIFT) without re-running the frozen backbone. Same dataset-copy
-    trick as :func:`clip_probs` so CLIP's own preprocessing is used.
+    trick as :func:`clip_probs` so CLIP's own preprocessing is used. ``multi_gpu=True``
+    splits each batch across all available GPUs (forward-only, so it never touches the
+    checkpoint format).
     """
     model = clip_bundle["model"]
+    encoder = _maybe_data_parallel(_ImageForward(model), multi_gpu)
     clip_dataset = copy.copy(dataset)
     clip_dataset.transform = clip_bundle["preprocess"]
     loader = DataLoader(clip_dataset, batch_size=batch_size, shuffle=False,
@@ -104,7 +127,7 @@ def encode_clip_features(dataset, clip_bundle: dict, device, batch_size: int = 1
 
     all_features, all_labels = [], []
     for images, targets in loader:
-        features = F.normalize(model.encode_image(images.to(device)), dim=-1)
+        features = F.normalize(encoder(images.to(device)), dim=-1)
         all_features.append(features.float().cpu())
         all_labels.append(targets)
     return torch.cat(all_features), torch.cat(all_labels)
