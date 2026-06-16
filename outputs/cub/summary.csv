@@ -1,0 +1,12 @@
+Metric,Value
+Number of Classes,200.0
+Total Train Images,3868.0
+Total Test Images,2000.0
+Max Class Size,50.0
+Min Class Size,5.0
+Mean Class Size,19.34
+Median Class Size,16.0
+Imbalance Ratio,10.0
+Many Classes,102.0
+Medium Classes,89.0
+Few Classes,9.0

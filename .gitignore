@@ -138,6 +138,8 @@ results/
 # Experiment run artifacts (keep the folder, ignore the contents)
 outputs/*
 !outputs/.gitkeep
+!outputs/cub/
+!outputs/cifar/
 
 *.pkl
 *.pth
