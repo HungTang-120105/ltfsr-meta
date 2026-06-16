@@ -42,7 +42,8 @@ File này trả lời 2 câu hỏi cho người đọc/người chấm: **(1) pr
 ## 4. Mong muốn đầu ra theo từng PHASE
 
 > Số dưới đây là **kỳ vọng/ballpark** (CIFAR-100-LT, IF=100, train từ đầu trừ khi nói khác).
-> Số thật sẽ chốt sau khi chạy; điều quan trọng là **xu hướng/thứ hạng** đúng.
+> **Đã chạy xong → số THẬT (cả CIFAR-100-LT lẫn CUB-200-LT) nằm trong [`../REPORT.md`](../REPORT.md).**
+> File này giữ làm tài liệu *mục tiêu/kế hoạch*; xu hướng/thứ hạng đúng như kỳ vọng.
 
 ### PHASE 1 — Train tất cả phương pháp (`run_all_methods.ipynb`)
 **Mục tiêu:** một leaderboard from-scratch trung thực, cho thấy can thiệp tail-aware giúp đuôi.

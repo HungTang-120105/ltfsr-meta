@@ -1,26 +1,30 @@
-# LTFSR-Meta — Long-Tail Few-Shot Recognition on CIFAR-100-LT
+# LTFSR-Meta — Long-Tailed Recognition: from-scratch vs. foundation models
 
 A small, readable research repository for long-tailed recognition (a few "head"
-classes have many images, many "tail" classes have very few). The study makes one
-point: **on long-tail data the bottleneck is the classifier, not the features.**
-Each method fixes the imbalance at a different level, so the **balanced / few-shot
-accuracy** rises step by step:
+classes have many images, many "tail" classes have very few), studied on **two
+datasets**: **CIFAR-100-LT** (IF=100) and **CUB-200-LT** (fine-grained, IF=10).
 
-| # | `METHOD` | Fixes at level | Idea | Code |
-|---|----------|----------------|------|------|
-| 1 | `baseline` | — | ResNet + linear softmax head + cross-entropy (head-biased reference) | `src/trainers/baseline_trainer.py` |
-| 2 | `balanced_softmax` | loss | Add the class-prior to the logits while training (Ren et al. 2020) | `src/trainers/losses.py` |
-| 3 | `decoupling` | classifier | Train features, then re-train the head on a class-balanced sampler — cRT (Kang et al. 2020) | `src/trainers/decoupling_trainer.py` |
-| 4 | `supcon` | representation | SupCon features + cRT classifier — **best** | `src/trainers/contrastive_trainer.py` |
-| 5 | `meta` | (bonus) | Episodic Prototypical Networks, reported on the few-shot N-way axis | `src/trainers/meta_trainer.py` |
+The study runs in **three tracks** and asks, for the few-image tail, *where should the
+knowledge come from?* Full results & analysis: **[`REPORT.md`](REPORT.md)**.
 
-Each method has a one-page explanation in [`docs/`](docs/). The methods share one
-encoder, one dataset module, and one metrics/visualisation suite, so the
-comparison is fair and the code stays small.
+1. **From-scratch** (Track 1) — ResNet-18 with a tail-aware fix at each level:
+   `baseline` (CE) → `balanced_softmax` (loss) → `decoupling`/cRT (classifier) →
+   `supcon` (representation) → `meta` (ProtoNet) → **`cmo`** (data: tail-rich CutMix +
+   Balanced-Softmax; **best from-scratch**, ≈0.47 bal-acc on CIFAR).
+2. **Reuse** (Track 2 / Phase 0) — no retraining: `ensemble`(+TTA), `tier_fusion`,
+   `tau_norm`, CLIP `vlm_fusion`.
+3. **Foundation models** (Track 3 / Phase 2–3) — adapt a **frozen** CLIP / DINOv2 by
+   training only a tiny head/adapter: `clip_zeroshot`, `tip_adapter`, **`lift`**,
+   **`dino_lift`**, LLM-enriched prototypes, feature diffusion/mixup, GLA, and a
+   tail-aware **`fusion`**. Main contribution and strongest result (**≈0.82 CIFAR /
+   0.85 CUB**); a second vision FM (**DINOv2**) helps the tail most.
+
+Per-method explanations in [`docs/`](docs/); how-to & per-phase guides in
+[`guides/`](guides/). Methods share one dataset module, metrics and visualisation
+suite, so the comparison is fair and the code stays small.
 
 > **Headline metric = `balanced_accuracy` and `few_shot_accuracy`, not plain top-1.**
-> On overall top-1 (dominated by head classes) a well-trained cross-entropy baseline
-> is hard to beat; the long-tail story shows up on the balanced/tail metrics.
+> Test sets are balanced (100/class CIFAR, 10/class CUB) → `accuracy == balanced_accuracy`.
 
 ### Backbone setups
 

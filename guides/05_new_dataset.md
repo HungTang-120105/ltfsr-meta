@@ -29,19 +29,25 @@ Hai hàm đọc (trong `src/datasets/cifar_lt.py`):
 
 ## 2. CUB-200-LT đã được tạo sẵn
 
-Script: **`data/prepare_cub_lt.py`** — chuyển CUB-200-2011 (gần cân bằng, ~30 ảnh/lớp) thành
-long-tail theo đúng công thức mũ của CIFAR-100-LT, giữ nguyên test, xuất ra layout trên.
+Script: **`data/prepare_cub_lt.py`** — chuyển CUB-200-2011 (~60 ảnh/lớp) thành long-tail theo đúng
+công thức mũ của CIFAR-100-LT: dùng **toàn bộ ảnh**, tách test cân bằng, subsample phần còn lại.
 
 ```bash
 python data/prepare_cub_lt.py --imbalance_factor 10 --overwrite
-# → data/CUB-200-LT/  (200 lớp, head=30, tail=3, train≈2347, test=5794, + class_names.json)
+# → data/CUB-200-LT/  (200 lớp, head=50, tail=5, train≈3868, test=2000 cân bằng, + class_names.json)
 ```
 
+Cơ chế (mới): dùng **toàn bộ ~60 ảnh/lớp**, tách **test cân bằng** (`--test_per_class`, mặc định
+10/lớp), phần còn lại (~50/lớp) làm pool long-tail. Mặc định **`max_images=50`, IF=10** → head 50,
+tail 5, train ≈ 3868, test 2000.
+
 Lưu ý đặc thù CUB:
-- CUB chỉ ~30 ảnh/lớp ⇒ **IF tối đa ~30** (không đạt IF=100 như CIFAR). Mặc định **IF=10** (đuôi 3 ảnh).
+- Pool ~50 train/lớp ⇒ với IF=10 head=50/tail=5. Tăng `--imbalance_factor` (vd 20) cho đuôi gắt hơn.
   Trình bày như **"CUB-200-LT, fine-grained, IF=10"** — không so trực tiếp IF với CIFAR.
-- Test CUB ~29 ảnh/lớp (hơi lệch, không phải 100/lớp như CIFAR) ⇒ `accuracy ≈ balanced_accuracy`
-  (không bằng tuyệt đối). Vẫn báo cáo theo **balanced_accuracy** là chính.
+- Test **cân bằng** (10/lớp) ⇒ `accuracy == balanced_accuracy` như CIFAR. (Muốn test lớn hơn:
+  tăng `--test_per_class`, nhưng train pool giảm.)
+- **Ngưỡng shot-group cho CUB (head 50):** dùng **`MANY_THRESHOLD=20`, `FEW_THRESHOLD=10`**
+  (many 78 / medium 66 / few 56 — cân bằng). *Không* dùng 15/6 (lệch: many 102 / few 9).
 - Tên lớp là **tên chim tiếng Anh** (vd "Black footed Albatross") ⇒ CLIP/LLM hiểu được (khác iNat
   dùng danh pháp Latin).
 
@@ -51,8 +57,8 @@ Trong cell **config** của `phase2_clip_adapt.ipynb` hoặc `phase3_knowledge_s
 
 ```python
 DATA_DIR = PROJECT_DIR / "data" / "CUB-200-LT"
-MANY_THRESHOLD = 15        # CUB: max ~30/lớp -> dùng 15 / 6 (CIFAR là 100 / 20)
-FEW_THRESHOLD = 6
+MANY_THRESHOLD = 20        # CUB head 50 -> 20 / 10 (CIFAR là 100 / 20)
+FEW_THRESHOLD = 10
 USE_CMO = False            # chưa có checkpoint từ-đầu cho CUB (xem mục 4)
 ```
 

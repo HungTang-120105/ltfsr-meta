@@ -20,7 +20,7 @@ clear, reportable comparison of long-tail methods (student research project, run
   `class_counts.json`, `class_names.json`) works — only data-reading differs. `load_class_names`
   reads names for CLIP/LLM (falls back to CIFAR-100). `data/prepare_cub_lt.py` builds **CUB-200-LT**
   (fine-grained, IF=10, names work for CLIP). Phase 2/3 notebooks auto-derive `NUM_CLASSES`/`CLASS_NAMES`
-  + take `MANY_THRESHOLD`/`FEW_THRESHOLD` (CUB: 15/6). See `guides/05_new_dataset.md`.
+  + take `MANY_THRESHOLD`/`FEW_THRESHOLD` (CUB head 50: 20/10). See `guides/05_new_dataset.md`.
 - **Model selection = best checkpoint by BALANCED accuracy on val** (val is long-tail-shaped,
   so raw accuracy is head-biased and would penalise tail-aware methods). See `classifier.py`.
 
@@ -93,7 +93,7 @@ external knowledge helps most — language (LLM), a second vision FM (DINOv2), o
 - `run_pipeline.ipynb` — **all 4 phases in one file** with toggles (`RUN_PHASE1/0/2/3`). Each phase
   is a function (isolated scope, no var collisions); shared config on top; `USE_MULTI_GPU` splits
   feature-extraction batches across GPUs (Kaggle 2×T4). Runs Phase 1→0→2→3 in one session so cmo
-  checkpoint flows to 0/3. For CUB: toggle off 1/0, set thresholds 15/6, `USE_CMO=False`.
+  checkpoint flows to 0/3. For CUB: toggle off 1/0, set thresholds 20/10, `USE_CMO=False`.
 - `run_all_methods.ipynb` — trains ALL `METHODS` back-to-back, writes `outputs/<method>/`,
   builds `comparison.csv` + comparison/overlay plots. (The standalone Phase-1 notebook.)
 - `phase0_reuse.ipynb` — reuse trained checkpoints (ensemble/TTA/tier_fusion/τ-norm/CLIP fusion).
@@ -110,6 +110,25 @@ external knowledge helps most — language (LLM), a second vision FM (DINOv2), o
 - SupCon stage-1 pretrains only on the **train split** (no val leak) — `pretrain_encoder(train_dataset,...)`.
 - `cmo` = Balanced-Softmax + CMO (a single combined method, not "CMO on every method").
 - Present CLIP fusion as a **separate "external knowledge" table**, not in the from-scratch leaderboard.
+- **Multi-dataset — do NOT reintroduce CIFAR-only assumptions** (each caused a real bug, all fixed):
+  class names from `load_class_names(DATA_DIR)` (never hardcode `CIFAR100_CLASSES`); `NUM_CLASSES`
+  auto-derived from `class_counts`; `build_transforms` forces square `(image_size,image_size)` so
+  variable-size images (CUB) collate (only the `image_size==32` path is CIFAR-native); **every**
+  `split_shot_groups` call must pass `MANY_THRESHOLD, FEW_THRESHOLD` (CUB head 50 → 20/10, else
+  `many` is empty); `BEST_SINGLE` must be in `REUSE_METHODS` (phase0 has a robust fallback); phase3
+  `cmo` control auto-detects pretrained/image_size from its `config.json`.
+- **`run_pipeline.ipynb` (merged):** each phase is a FUNCTION (own scope). Any config var a phase
+  reassigns conditionally (e.g. `DATA_DIR` under `BUILD_DATASET`, `NUM_CLASSES`) MUST be `global` in
+  that function or you get UnboundLocalError. `USE_MULTI_GPU` only DataParallels feature extraction
+  (forward-only, safe; set False to disable).
+
+## Local dev / verifying notebooks (this machine has no GPU/internet)
+- Use **`venv/Scripts/python.exe`** (system `python` lacks sklearn). CPU only; `open_clip` /
+  `transformers` / `dinov2` are NOT installed → CLIP/DINOv2/LLM run only on Kaggle.
+- Verify a notebook without Kaggle: (1) `ast.parse` each code cell; (2) `symtable` per-phase-function
+  free-var check (undefined globals, incl. nested closures); (3) `exec` the config + phase-def cells;
+  (4) for runnable phases call them on local `data/CIFAR-100-LT` or `data/CUB-200-LT` with tiny
+  `EPOCHS`/`MAX_*`, `NUM_WORKERS=0`, `DEVICE='cpu'`. Phase 1 + Phase 0-reuse run fully on CPU.
 
 ## Expected ballpark (CIFAR-100-LT IF=100, from scratch)
 
@@ -129,10 +148,18 @@ Phase 2 (adapt frozen CLIP): tip_adapter ~0.68–0.72, tip_adapter_f ~0.71–0.7
 
 ## Status
 
-Phase 0 + Phase 1 + Phase 2 + Phase 3 + val-split + balanced-selection implemented. Phase 0/1
-smoke-tested; Phase 2 real numbers obtained (lift ~0.72 with ViT-B/32; Tip-Adapter cache fixed to
-class-balanced). Phase 3 (LLM prototypes / DINOv2 / feature-diffusion / GLA / tail-aware fusion)
-code-complete and numerically smoke-tested on synthetic features —
-**run `phase3_knowledge_sources.ipynb` on Kaggle (GPU + internet) for the real study**.
-Not committed to git yet. Latest results: `outputs/comparison.csv`, `outputs/comparison_vlm.csv`,
-`outputs/knowledge_sources.csv`.
+**DONE — both datasets run on Kaggle; writing the report.** Full real numbers + analysis in
+**`REPORT.md`** (the deliverable). Results CSVs: `outputs/cifar/*.csv`, `outputs/cub_200_2011/*.csv`.
+
+Headline (consistent on BOTH datasets): from-scratch tops ~0.47 bal-acc (CIFAR) / ~0.25 (CUB) →
+foundation track reaches **0.82 / 0.85**. **DINOv2 (2nd vision FM) helps the tail most**
+(dino_lift 0.81 / 0.84), > LIFT-CLIP (0.72 / 0.67) > CLIP zero-shot (0.63 / 0.46); `fusion_greedy`
+slightly tops the best single with no per-group regression. Honest negatives: LLM-prototypes ≈
+zero-shot, feature-diffusion & mixup gave no gain. Ablation A (DINOv2): our pipeline lifts few-shot
+0.02→0.74 (CIFAR) / 0.08→0.86 (CUB). Ablation B: heavy CLIP fine-tune hurts the tail (few 0.11 vs 0.64).
+
+**Two known result caveats (see REPORT.md §7):** (1) CIFAR Phase-0 single-model numbers exceed the
+from-scratch leaderboard → Phase-0 ran on a different (likely pretrained) checkpoint set; treat its
+reuse table as illustrative. (2) CUB from-scratch many/medium/few breakdown was computed before the
+shot-group threshold fix (many empty) → balanced_accuracy valid, that breakdown is not. Both are
+breakdown-only; balanced_accuracy and the conclusions hold. Not committed to git.

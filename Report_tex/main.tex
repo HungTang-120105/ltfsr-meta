@@ -1,0 +1,80 @@
+\documentclass[a4paper, 13pt]{report}
+\usepackage{a4wide}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage[left=2.50cm, right=2.50cm, top=2.50cm, bottom=2.5cm]{geometry}
+\usepackage{wrapfig} % Cho phép văn bản bao quanh hình ảnh
+\usepackage{titlesec} % Tuỳ chỉnh định dạng tiêu đề (chapter, section, subsection)
+\usepackage{graphicx} % Chèn hình ảnh vào tài liệu
+\usepackage{listings} % Chèn code
+\usepackage{alltt} % Hiển thị đúng định dạng theo src code
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{mdframed}
+\usepackage{amsmath}
+\usepackage{lipsum}
+\usepackage{amssymb}
+\usepackage{caption, subcaption}  
+\usepackage{xcolor} % Sử dụng màu sắc trong báo cáo
+\usepackage{url}
+\usepackage{array}
+\usepackage{titlefoot}
+\usepackage[
+    bookmarks,  
+    hidelinks,  
+    colorlinks=true,
+    urlcolor=blue,
+    citecolor=blue,
+    linkcolor=black
+]{hyperref}
+\usepackage{float}
+\usepackage{fancyhdr} % Tuỳ chỉnh header and footer
+\usepackage{lastpage}
+\usepackage{etoolbox} % Để tùy chỉnh page style sau \include
+\usepackage{ocg-p}
+\usepackage{amsmath}
+
+\usepackage{booktabs} % Tạo bảng đẹp hơn
+\usepackage{multirow} % Gộp ô theo hàng dọc
+\usepackage{makecell} % Căn chỉnh nội dung ô bảng
+\usepackage{array}    % Tùy chỉnh cột bảng
+\usepackage{caption}  % Tùy chỉnh caption bảng
+\newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
+
+\setlength{\parindent}{0pt}
+
+% Cấu hình fancyhdr
+\pagestyle{fancy}
+\fancyhf{} % Xóa tất cả các trường header và footer hiện tại
+
+% Thiết lập header mới
+\lhead{\textbf{IT3190 - Mã lớp - Nhóm  - }}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\algorithmautorefname}{Thuật toán}
+
+\setcounter{secnumdepth}{3}
+
+\begin{document}
+\begingroup
+    \pagestyle{empty}
+    \include{titlepage.tex}
+\endgroup
+
+\begingroup
+    \tableofcontents
+    \thispagestyle{empty}
+\endgroup
+
+\pagestyle{fancy}
+\include{preface}
+\include{chapters/chap1}
+\include{chapters/chap2}
+\include{chapters/chap3}
+\include{chapters/chap4}
+\include{chapters/chap5}
+\include{appendix}
+\include{references}
+
+\label{LastPage} % Đặt nhãn cho trang cuối cùng
+\end{document}
