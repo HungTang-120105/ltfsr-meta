@@ -1,1 +1,39 @@
 \chapter*{Phụ lục}
+\addcontentsline{toc}{chapter}{Phụ lục}
+
+\section*{A. Cấu trúc mã nguồn}
+
+\begin{alltt}
+src/
+  datasets/   cifar_lt.py (đọc dữ liệu, tách split, nhóm-shot), augment.py, episodic.py
+  models/     backbone.py (build_encoder, CIFAR stem), baseline.py, projection.py, prototype.py
+  trainers/   engine.py (vòng train/eval), losses.py (Balanced Softmax),
+              baseline_trainer.py, decoupling_trainer.py, contrastive_trainer.py,
+              augment_trainer.py, meta_trainer.py, classifier.py
+  experts/    clip_expert.py, tip_adapter.py, lift.py, clip_finetune.py,
+              llm_prompts.py, dino_expert.py, feature_diffusion.py,
+              feature_mixup.py, gla.py
+  evaluation/ metrics.py, ensemble.py, posthoc.py, fusion.py, visualize.py
+notebooks/    run_pipeline.ipynb (4 phase, toggle), run_all_methods.ipynb,
+              phase0_reuse.ipynb, phase2_clip_adapt.ipynb, phase3_knowledge_sources.ipynb
+data/         prepare_datasets.py (CIFAR-100-LT), prepare_cub_lt.py (CUB-200-LT)
+outputs/      cifar/*.csv, cub_200_2011/*.csv (kết quả thô), figures/ (hình EDA)
+\end{alltt}
+
+\section*{B. Tái lập kết quả}
+
+Trình tự tối giản (một máy, tuần tự): \texttt{prepare\_datasets.py} $\rightarrow$
+\texttt{run\_all\_methods.ipynb} (sinh checkpoint, gồm \texttt{cmo}) $\rightarrow$
+\texttt{phase0\_reuse.ipynb} $\rightarrow$ \texttt{phase2\_clip\_adapt.ipynb} $\rightarrow$
+\texttt{phase3\_knowledge\_sources.ipynb}. Hoặc chạy tất cả trong \texttt{run\_pipeline.ipynb} với
+các toggle \texttt{RUN\_PHASE1/0/2/3}. Đổi sang CUB-200-LT chỉ cần đặt \texttt{DATA\_DIR}, ngưỡng
+nhóm-shot \texttt{MANY\_THRESHOLD=20}, \texttt{FEW\_THRESHOLD=10}, và tắt \texttt{USE\_CMO}.
+
+\section*{C. Nguồn số liệu}
+
+Mọi bảng trong báo cáo lấy trực tiếp từ:
+\texttt{outputs/cifar/train\_from\_scratch/comparison\_train\_from\_scratch.csv} (Track 1),
+\texttt{outputs/cifar/pretrained/comparison\_phase0.csv} (Track 2),
+\texttt{outputs/cifar/comparison\_phase3.csv} và \texttt{comparison\_vlm\_phase2.csv} (Track 3),
+\texttt{outputs/cub\_200\_2011/comparison.csv} và \texttt{knowledge\_sources.csv} (CUB).
+Thống kê dữ liệu CIFAR từ \texttt{outputs/cifar/summary.csv}; hình EDA từ \texttt{outputs/figures/}.

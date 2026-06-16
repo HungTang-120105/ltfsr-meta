@@ -1,1 +1,113 @@
 \chapter{Các chiến lược đánh giá và độ đo áp dụng}
+\label{chap:eval}
+
+Trên dữ liệu long-tailed, chọn sai thước đo gần như đồng nghĩa với sai từ gốc. Chương này trình bày
+giao thức đánh giá nghiêm ngặt mà nhóm áp dụng đồng nhất cho mọi phương pháp, ý nghĩa của từng độ
+đo, cùng cấu hình thực nghiệm và các mốc đối chứng (baseline).
+
+\section{Chiến lược chọn mô hình và giao thức đánh giá}
+
+\subsection{Tách validation, không bao giờ đụng test}
+Như đã nêu ở Chương~\ref{chap:data}, một tỉ lệ $\text{VAL\_FRACTION}=0.1$ được tách phân tầng từ
+train để \emph{chọn checkpoint và tinh chỉnh siêu tham số}, còn tập test \emph{chỉ} dùng cho con số
+báo cáo cuối cùng. Đây là điểm khác biệt so với một số báo cáo long-tail vô tình chọn mô hình ngay
+trên test, qua đó tạo ra kết quả lạc quan giả. Vì tập validation vẫn giữ hình dạng long-tail, việc
+chọn theo balanced accuracy là cần thiết để không thiên về head.
+
+\subsection{Hệ quả: validation thiếu lớp đuôi}
+Do mỗi lớp phải giữ ít nhất một ảnh train và lớp tail chỉ có 5 ảnh (giữ nguyên cả 5), tập validation
+thường \emph{không chứa lớp tail}. Đây là một hạn chế cố hữu của giao thức và ảnh hưởng trực tiếp
+tới cách tinh chỉnh. Cụ thể, với các trọng số fusion theo nhóm-shot, nhóm \emph{few} không có tín
+hiệu trên validation nên được \textbf{buộc theo trọng số của nhóm medium} (đây là quyết định được
+ghi rõ trong mã, không phải suy đoán). Tương tự, cường độ GLA và $\tau$ của $\tau$-norm đều được
+chọn trên validation, với lưới luôn chứa giá trị ``không can thiệp'' ($0$) để trong trường hợp xấu
+nhất cũng không làm xấu kết quả.
+
+\section{Các độ đo đánh giá}
+\label{sec:metrics}
+
+Gọi $\text{recall}_c = \text{TP}_c/(\text{TP}_c+\text{FN}_c)$ là recall (độ nhạy) của lớp $c$. Các
+độ đo dưới đây được tính trong \texttt{src/evaluation/metrics.py}.
+
+Thước đo \emph{chính} là \textbf{balanced accuracy}, tức trung bình recall trên các lớp,
+$\text{bal-acc}=\frac{1}{C}\sum_{c}\text{recall}_c$. Mỗi lớp đóng góp như nhau bất kể tần suất, nên
+cải thiện ở tail không bị ``nuốt'' bởi head; và vì test cân bằng, đại lượng này trùng với accuracy
+thô. Đi kèm với nó là \textbf{few-shot accuracy} --- trung bình recall \emph{chỉ trên nhóm
+few-shot} --- cùng các đại lượng tương tự cho many-shot và medium-shot, cho phép ``mổ xẻ'' hiệu năng
+theo mức độ hiếm. Ngoài ra, \textbf{macro-F1} (trung bình F1 trên các lớp) nhạy với cả precision lẫn
+recall của lớp hiếm.
+
+Một độ đo đặc biệt hữu ích là \textbf{G-mean}, trung bình \emph{nhân} của recall các lớp,
+$\text{G}=\big(\prod_c \text{recall}_c\big)^{1/C}=\exp\!\big(\frac{1}{C}\sum_c\log\text{recall}_c\big)$.
+Vì là trung bình nhân, chỉ cần \emph{một} lớp có recall $\approx 0$ cũng đủ kéo G-mean về gần $0$,
+nên đây là thước đo khắc nghiệt nhất với hiện tượng bỏ rơi lớp tail. Trong kết quả, các phương pháp
+làm tail ``chết'' (chẳng hạn baseline) có G-mean rất nhỏ (cỡ $0.1$), trong khi các phương pháp cứu
+được tail lại có G-mean cao hơn hẳn --- một tín hiệu chẩn đoán rất trực quan. Sau cùng, \textbf{accuracy
+thô} và \textbf{MCC} cũng được tính để tham khảo, nhưng \emph{không} dùng làm thước đo chính vì
+accuracy thô bị head thống trị.
+
+Về mặt kỹ thuật, cảnh báo của sklearn ``\texttt{y\_pred contains classes not in y\_true}'' là vô
+hại trên validation long-tail (val thiếu một số lớp) và đã được chủ động chặn.
+
+\section{Cấu hình thực nghiệm}
+
+\subsection{Môi trường}
+Toàn bộ huấn luyện chạy trên GPU Kaggle (NVIDIA T4, có cấu hình $2\times$T4); cờ
+\texttt{USE\_MULTI\_GPU} chia batch trích đặc trưng (chỉ forward, an toàn) lên hai GPU. Framework là
+PyTorch (2.6); cần lưu ý PyTorch 2.6 đặt \texttt{torch.load} mặc định \texttt{weights\_only=True},
+nên toàn bộ điểm nạp checkpoint trong project dùng \texttt{weights\_only=False} và lưu scalar dưới
+dạng \texttt{float} Python. Các thư viện ngoài gồm \texttt{open\_clip\_torch} (CLIP),
+\texttt{torch.hub} (DINOv2), \texttt{transformers} (LLM \texttt{Qwen2.5-3B-Instruct}) và
+\texttt{scikit-learn} (độ đo, t-SNE); riêng CLIP/DINOv2/LLM cần Internet trên Kaggle để tải trọng
+số lần đầu. Để bảo đảm tái lập, nhóm cố định hạt giống ($42$) và đặt
+\texttt{cudnn.deterministic=True}, trong khi episode của meta-learning dùng một bộ sinh ngẫu nhiên
+riêng.
+
+\subsection{Siêu tham số huấn luyện}
+Bảng~\ref{tab:hparams} tổng hợp các siêu tham số chính, lấy trực tiếp từ mã nguồn.
+
+\begin{table}[H]
+\centering
+\caption{Siêu tham số chính của các phương pháp (theo mã nguồn).}
+\label{tab:hparams}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Phương pháp / thành phần} & \textbf{Cấu hình tối ưu hoá} & \textbf{Ghi chú} \\
+\midrule
+Track 1 (chung) & SGD, lr $0.1$, momentum $0.9$, wd $5\!\times\!10^{-4}$ & 200 epoch, cosine, batch 128 \\
+\quad SupCon pretrain & SGD, lr $0.5$, wd $10^{-4}$, $\tau{=}0.07$ & 200 epoch; head $512\!\to\!512\!\to\!128$ \\
+\quad cRT (decoupling/supcon) & lr $0.1$, sampler cân bằng & 10 epoch, đóng băng BN \\
+\quad Meta (ProtoNet) & Adam, lr $10^{-3}$ & 5-way 5-shot 15-query, 100 episode/epoch \\
+\quad CMO/Mixup/CutMix & $\alpha{=}1.0$, xác suất trộn $0.5$ & tiêu chí Balanced Softmax \\
+\midrule
+Tip-Adapter & grid $\alpha,\beta$ trên val & training-free; cache cân bằng \\
+Tip-Adapter-F & AdamW, lr $10^{-3}$ & 20 epoch, Balanced Softmax \\
+LIFT / DINOv2-LIFT & AdamW, lr $10^{-3}$, wd $10^{-2}$ & 50 epoch, bottleneck 64, cosine \\
+Feature diffusion & AdamW, lr $10^{-3}$ & 100 bước, lịch $\beta\in[10^{-4},0.02]$ \\
+CLIP fine-tune (ablation) & AdamW, lr $10^{-4}$ & 10 epoch; depth: linear/last-block/full \\
+\midrule
+Backbone nền tảng & CLIP ViT-B/32 ($512$d); DINOv2 ViT-S/14 ($384$d) & \emph{đóng băng} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Trước mỗi lần chạy đầy đủ, nhóm đều thực hiện một bước smoke-test nhanh
+(\texttt{MAX\_TRAIN\_SAMPLES=2000}, \texttt{EPOCHS=5}) để bảo đảm pipeline thông suốt, rồi mới chạy
+đầy đủ với \texttt{EPOCHS=200}.
+
+\section{Các mốc đối chứng (baselines)}
+
+Để định vị chính xác đóng góp, báo cáo sử dụng nhiều lớp baseline khác nhau. \emph{Baseline tuyệt
+đối} là ResNet-18 $+$ cross-entropy, đóng vai mốc ``không can thiệp'' --- mọi cải thiện so với nó
+đều cho thấy giá trị của can thiệp tail-aware. \emph{Trần from-scratch} là \texttt{cmo}, phương pháp
+huấn luyện-từ-đầu mạnh nhất, đồng thời là ``đối chứng không tri thức ngoài'' cho toàn bộ Track 3.
+\emph{Mốc zero-shot} là CLIP zero-shot, đóng vai mốc sàn của track tri thức ngoài (không huấn luyện
+gì). Cuối cùng là các \emph{mốc ablation}: chuỗi DINOv2 (linear-probe$+$CE $\to$
+linear-probe$+$Balanced-Softmax $\to$ LIFT đầy đủ) dùng để tách đóng góp của \emph{loss} và của
+\emph{kiến trúc}, còn chuỗi độ-sâu fine-tune CLIP dùng để kiểm luận điểm ``fine-tune nặng hại
+đuôi''.
+
+Việc tách thành hai bảng riêng --- \emph{leaderboard from-scratch} và \emph{bảng tri thức ngoài}
+--- là có chủ đích: các phương pháp dùng tri thức ngoài vốn không cùng setup với from-scratch, nên
+trình bày riêng sẽ ``chính danh'' hơn khi so sánh.

@@ -1,15 +1,183 @@
 \chapter{Tiền xử lý dữ liệu}
+\label{chap:data}
 
 \section{Đường ống xử lý dữ liệu}
+
+Triết lý thiết kế dữ liệu của đề tài có thể tóm gọn trong một ý: mọi bộ dữ liệu đuôi-dài đều được
+quy về một bố cục chung, sao cho khi đổi dataset ta chỉ cần thay cách đọc dữ liệu chứ không phải sửa
+logic phương pháp. Cụ thể, mỗi dataset được tổ chức theo bố cục \textbf{ImageFolder} chuẩn, kèm hai
+tệp siêu dữ liệu:
+
+\begin{alltt}
+<DATASET>-LT/
+  train/class_000/ ... class_\{C-1\}/   # ảnh huấn luyện (đã lấy mẫu thành long-tail)
+  test/class_000/  ... class_\{C-1\}/   # ảnh kiểm tra (cân bằng)
+  class_counts.json   # \{"0": n0, ..., "C-1": n_\{C-1\}\}  -- số ảnh train mỗi lớp
+  class_names.json    # ["tên lớp 0", ..., "tên lớp C-1"] -- theo đúng thứ tự nhãn
+\end{alltt}
+
+Theo quy ước, thư mục \texttt{class\_\{i:03d\}} tương ứng nhãn $i$; \texttt{class\_names[i]} là tên
+đọc được của lớp $i$ (dùng cho CLIP zero-shot, sinh mô tả bằng LLM, và khởi tạo đầu phân loại của
+LIFT), còn \texttt{class\_counts.json} mô tả hồ sơ long-tail. Hai hàm \texttt{load\_class\_counts} và
+\texttt{load\_class\_names} (trong \texttt{src/datasets/cifar\_lt.py}) là toàn bộ chỗ ``khác nhau''
+giữa các dataset; do phần phương pháp nhận đầu vào dưới dạng \emph{đặc trưng $+$ nhãn $+$ tên lớp},
+nó không cần thay đổi khi ta chuyển sang một bộ dữ liệu mới.
+
 \subsection{Thu thập dữ liệu}
+
+Nhóm sử dụng \textbf{hai} bộ dữ liệu nhằm kiểm tra tính tổng quát của kết luận trên hai miền và hai
+quy mô lớp khác nhau.
+
+\paragraph{CIFAR-100-LT (IF = 100) --- bộ dữ liệu chính.} Bộ này được tạo từ CIFAR-100 gốc, gồm 100
+lớp ảnh tự nhiên $32\times32$ RGB tổ chức thành 20 siêu lớp $\times$ 5 lớp con, với 500 ảnh train và
+100 ảnh test mỗi lớp ở dạng ban đầu. Script \texttt{data/prepare\_datasets.py} lấy mẫu lại tập train
+theo \emph{hàm mũ} --- một giao thức chuẩn trong cộng đồng long-tailed:
+\begin{equation}
+n_c = \big\lfloor n_{\max}\cdot \rho^{-c/(C-1)} \big\rfloor,
+\qquad \rho = \text{IF} = 100,\quad n_{\max}=500,\quad C=100,
+\label{eq:exp-decay}
+\end{equation}
+qua đó lớp head giữ $500$ ảnh còn lớp tail chỉ còn $5$ ảnh, tổng cộng \textbf{10\,847} ảnh huấn
+luyện. Tập test được giữ \textbf{cân bằng} ở mức $100$ ảnh/lớp ($10\,000$ ảnh).
+
+\paragraph{CUB-200-LT (fine-grained, IF = 10).} Bộ này được tạo từ CUB-200-2011 (200 loài chim, kích
+thước ảnh biến thiên, khoảng 60 ảnh/lớp) bằng \texttt{data/prepare\_cub\_lt.py}. Do pool chỉ có
+khoảng 60 ảnh/lớp, quy trình tách \textbf{test cân bằng} $10$ ảnh/lớp ($2\,000$ ảnh) trước, rồi lấy
+mẫu mũ phần còn lại (khoảng 50 ảnh/lớp) theo cùng công thức~\eqref{eq:exp-decay} với head $50$, tail
+$5$ (IF$=$10), cho tổng khoảng \textbf{3\,868} ảnh train. Đây là một bài toán \emph{fine-grained}:
+các lớp khác nhau ở những chi tiết tinh vi như mỏ, lông hay sải cánh, nên khó hơn nhiều so với phân
+loại vật thể thông thường. Vì pool tối đa chỉ khoảng 50 ảnh/lớp nên CUB chỉ đạt IF$\le$50; nhóm
+trình bày nó như một miền fine-grained và \emph{không} so trực tiếp hệ số IF với CIFAR.
 
 \subsection{Mô tả tổng quan dữ liệu}
 
+Bảng~\ref{tab:dataset-stats} tổng hợp các thống kê then chốt của hai bộ dữ liệu sau khi lấy mẫu
+long-tail (số liệu CIFAR lấy trực tiếp từ \texttt{outputs/cifar/summary.csv}).
+
+\begin{table}[H]
+\centering
+\caption{Thống kê tổng quan hai bộ dữ liệu sau khi lấy mẫu long-tail.}
+\label{tab:dataset-stats}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Thuộc tính} & \textbf{CIFAR-100-LT} & \textbf{CUB-200-LT} \\
+\midrule
+Số lớp $C$ & 100 & 200 \\
+Tổng ảnh train & 10\,847 & $\sim$3\,868 \\
+Tổng ảnh test (cân bằng) & 10\,000 & 2\,000 \\
+Số ảnh lớp lớn nhất ($n_{\max}$) & 500 & 50 \\
+Số ảnh lớp nhỏ nhất ($n_{\min}$) & 5 & 5 \\
+Trung bình ảnh/lớp & 108.47 & $\sim$19.3 \\
+Trung vị ảnh/lớp & 49.5 & --- \\
+Hệ số mất cân bằng (IF) & 100 & 10 \\
+Kích thước ảnh & $32\times32$ & biến thiên ($\to$ resize) \\
+Bản chất miền & vật thể tự nhiên & fine-grained (loài chim) \\
+\midrule
+Nhóm many / medium / few (số lớp) & 35 / 35 / 30 & 78 / 66 / 56 \\
+Ngưỡng nhóm-shot & $>$100 / 20--100 / $<$20 & $>$20 / 10--20 / $<$10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Để có thể báo cáo chi tiết theo mức độ hiếm, các lớp được chia thành ba nhóm \emph{many} (nhiều
+mẫu), \emph{medium} (trung bình) và \emph{few} (hiếm), với ngưỡng chọn sao cho ba nhóm cân đối về số
+lớp. Với CIFAR (head 500), ngưỡng là $100$ và $20$, cho $35/35/30$ lớp. Với CUB (head chỉ 50), nếu
+giữ nguyên ngưỡng $100/20$ thì nhóm \emph{many} sẽ rỗng; do đó nhóm dùng ngưỡng riêng $20/10$, cho
+$78/66/56$ lớp. Đây là một quyết định thiết kế quan trọng đã được phản ánh trong mã nguồn --- mọi
+lời gọi \texttt{split\_shot\_groups} đều phải truyền ngưỡng phù hợp với từng dataset.
 
 \subsection{Phân tích khám phá dữ liệu (EDA)}
 
+\paragraph{Hình dạng đuôi-dài.} Hình~\ref{fig:class-dist} vẽ số ảnh huấn luyện theo thứ hạng lớp
+(sắp giảm dần) trên CIFAR-100-LT. Đường cong tụt rất nhanh đúng theo dạng mũ của
+công thức~\eqref{eq:exp-decay}: chỉ một số ít lớp đầu sở hữu vài trăm ảnh, còn phần lớn các lớp nằm
+sát đáy. Hai đường ngưỡng many-shot ($100$) và few-shot ($20$) chia phổ thành ba vùng. Phân bố này
+chính là nguyên nhân gốc rễ của mọi khó khăn về sau, bởi nếu tối ưu tổng loss thì mô hình ``được
+lời'' nhiều hơn khi tập trung vào phần đầu của đường cong.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/class_distribution.png}
+\caption{Phân bố số ảnh huấn luyện theo thứ hạng lớp trên CIFAR-100-LT (IF$=$100, $n_{\max}=500$,
+$n_{\min}=5$). Đường đứt cam $=$ ngưỡng many-shot, đường đứt đỏ $=$ ngưỡng few-shot.}
+\label{fig:class-dist}
+\end{figure}
+
+\paragraph{Độ lệch của phân bố.} Histogram số ảnh/lớp ở Hình~\ref{fig:hist-group} (trái) cho thấy
+phần lớn các lớp dồn về vùng ít mẫu (mode nằm ở khoảng 5--20 ảnh), trong khi đuôi phải kéo dài tới
+500. Việc trung bình ($108.5$) lớn hơn nhiều so với trung vị ($49.5$) là một dấu hiệu kinh điển của
+phân bố lệch phải mạnh. Phần bên phải của hình minh hoạ rõ hơn sự chênh lệch: số ảnh trung bình mỗi
+nhóm cách nhau hơn 25 lần, với many $\approx 252$, medium $\approx 49$ và few $\approx 10$ ảnh/lớp.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.55\textwidth}
+  \includegraphics[width=\textwidth]{images/class_count_histogram.png}
+  \caption{Histogram số ảnh/lớp.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.42\textwidth}
+  \includegraphics[width=\textwidth]{images/group_counts.png}
+  \caption{Số lớp và số ảnh TB mỗi nhóm.}
+\end{subfigure}
+\caption{Mức độ lệch của CIFAR-100-LT. Trung bình ($108.5$) $\gg$ trung vị ($49.5$); số ảnh trung
+bình của nhóm few ($\approx10$) nhỏ hơn nhóm many ($\approx252$) hơn 25 lần.}
+\label{fig:hist-group}
+\end{figure}
+
+\paragraph{Train lệch nhưng test cân bằng.} Hình~\ref{fig:train-test} chồng số ảnh/lớp của tập train
+(đường giảm mũ) lên tập test (đường ngang ở mức $100$). Đây là điểm mấu chốt của giao thức đánh giá:
+ta huấn luyện trên phân bố lệch nhưng đo trên phân bố đều, mô phỏng đúng tình huống thực tế khi dữ
+liệu thu được hiếm khi cân bằng nhưng mọi lớp lại quan trọng như nhau lúc triển khai. Cũng chính vì
+test cân bằng nên ta có $\text{accuracy} = \text{balanced\_accuracy}$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/train_test_scatter.png}
+\caption{Số ảnh mỗi lớp ở tập train (giảm mũ) so với test (cân bằng $100$/lớp) trên CIFAR-100-LT.}
+\label{fig:train-test}
+\end{figure}
+
+\paragraph{Quan sát định tính head và tail.} Hình~\ref{fig:head-tail} hiển thị một số ảnh đại diện
+của các lớp head (hàng trên) và tail (hàng dưới). Quan sát cho thấy bản thân ảnh tail không hề ``khó
+hơn'' ảnh head về mặt chất lượng; thứ chúng thiếu chỉ là \emph{số lượng}. Điều này củng cố giả
+thuyết của nhóm: nút thắt không nằm ở việc nhận diện đối tượng mà ở chỗ \emph{ước lượng đủ tốt từ
+quá ít mẫu} --- một khó khăn mà tri thức bên ngoài hoàn toàn có thể bù đắp.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/head_vs_tail_examples.png}
+\caption{Ảnh mẫu của các lớp head (hàng trên, $\sim$500 ảnh) và tail (hàng dưới, $\sim$5 ảnh).
+Ảnh tail không kém chất lượng --- chúng chỉ \emph{quá ít}.}
+\label{fig:head-tail}
+\end{figure}
 
 \subsection{Làm sạch dữ liệu (Data Cleaning)}
 
+Do dữ liệu xuất phát từ hai benchmark đã được kiểm định kỹ (CIFAR-100 và CUB-200-2011), gần như
+không có nhãn sai hay ảnh hỏng cần loại bỏ. Vì vậy công việc ``làm sạch'' ở đây chủ yếu xoay quanh
+việc \emph{chuẩn hoá tiền xử lý} để mọi phương pháp nhận đầu vào hợp lệ và so sánh được công bằng.
+
+Trước hết, một tỉ lệ $\text{VAL\_FRACTION}=0.1$ được tách \emph{phân tầng theo lớp} từ tập train để
+chọn checkpoint, trong khi tập test không bao giờ tham gia vào quá trình chọn mô hình. Một ràng buộc
+quan trọng là mỗi lớp phải giữ ít nhất một ảnh train, nên các lớp tail (vốn chỉ có 5 ảnh) được giữ
+nguyên cả 5; hệ quả là tập validation thường \emph{không chứa lớp tail} --- một đặc điểm sẽ ảnh
+hưởng trực tiếp tới cách tinh chỉnh siêu tham số ở Chương~\ref{chap:eval}. Về phép biến đổi ảnh, với
+ảnh $32\times32$ (CIFAR-native) nhóm dùng random crop (padding 4), random horizontal flip và chuẩn
+hoá theo mean/std của CIFAR khi huấn luyện, còn khi test chỉ chuẩn hoá; với ảnh kích thước biến
+thiên (CUB) hoặc khi dùng mô hình nền tảng, \texttt{build\_transforms} \emph{ép resize về vuông}
+$(s\times s)$ để các ảnh gộp batch được, sau đó áp tiền xử lý riêng của từng backbone (CLIP resize
+$224$; DINOv2 resize/center-crop $224$ kèm chuẩn hoá ImageNet). Để tránh ``cứng hoá'' các giả định
+riêng của CIFAR (mỗi giả định như vậy từng gây ra một lỗi thực sự đã được sửa), $\text{NUM\_CLASSES}$
+được suy ra từ \texttt{class\_counts} và tên lớp lấy từ \texttt{load\_class\_names}. Cuối cùng, ở
+Track 3, đặc trưng của mô hình nền tảng được trích \emph{một lần} cho mỗi split rồi lưu cache trên
+CPU, nhờ đó việc huấn luyện adapter về sau chỉ tốn vài giây mỗi epoch.
 
 \subsection{Kết luận}
+
+Phân tích dữ liệu khẳng định ba điều định hình toàn bộ thiết kế phương pháp về sau. Thứ nhất, phân
+bố train cực kỳ lệch (IF$=$100, đuôi 5 ảnh) trong khi test cân bằng, nên \textbf{balanced accuracy
+và few-shot accuracy} mới là thước đo đúng, còn accuracy thô sẽ đánh lừa. Thứ hai, đuôi quá ngắn
+khiến việc học-từ-đầu cho các lớp hiếm gần như vô vọng, gợi ý mạnh rằng cần \emph{mượn tri thức
+ngoài}. Thứ ba, việc bổ sung CUB-200-LT (fine-grained) cho phép kiểm chứng kết luận trên một miền
+khó hơn và một quy mô lớp gấp đôi. Những quan sát này là cơ sở trực tiếp cho các lựa chọn phương
+pháp được trình bày ở Chương~\ref{chap:theory}.

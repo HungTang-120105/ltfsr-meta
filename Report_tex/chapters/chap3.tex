@@ -1,1 +1,377 @@
 \chapter{Cơ sở lý thuyết}
+\label{chap:theory}
+
+Chương này trình bày nền tảng lý thuyết của tất cả các phương pháp được nhóm triển khai, theo đúng
+ba lớp tiếp cận đã giới thiệu. Với mỗi phương pháp, nhóm cố gắng tái hiện trọn vẹn mạch suy nghĩ:
+\emph{động lực} dẫn tới nó, \emph{trực giác} đằng sau, \emph{công thức toán học} đúng như được cài
+đặt, cùng những \emph{ưu và nhược điểm} so với các lựa chọn khác. Phần cuối chương tổng hợp tất cả
+thành \emph{pipeline đề xuất} của nhóm.
+
+\section{Khung chung và ký hiệu}
+\label{sec:common}
+
+\paragraph{Bộ trích đặc trưng (backbone).} Ở Track 1, nhóm dùng \textbf{ResNet-18} với một sửa đổi
+quan trọng dành cho ảnh nhỏ: thay ``stem'' gốc của ImageNet (conv $7\times7$ stride 2 $+$ maxpool)
+bằng một conv $3\times3$ stride 1 và bỏ hẳn maxpool. Lý do là stem gốc thu nhỏ ảnh $32\times32$
+xuống còn $4\times4$ trước khi đặc trưng kịp hình thành, làm hỏng tín hiệu trên CIFAR. Đây là giao
+thức chuẩn của CIFAR-LT (\texttt{pretrained=False}, huấn luyện từ đầu), với đầu ra là vector đặc
+trưng $512$ chiều sau global average pooling. Cấu hình thay thế \texttt{pretrained=True} giữ nguyên
+stem ImageNet và đòi hỏi ảnh $224$, nên chỉ được dùng cho bảng phụ.
+
+\paragraph{Chọn mô hình theo balanced accuracy.} Một quyết định nền tảng khác là checkpoint tốt nhất
+luôn được chọn theo \textbf{balanced accuracy trên tập validation} thay vì accuracy thô. Vì
+validation vẫn giữ hình dạng long-tail, accuracy thô sẽ thiên về head và vô tình \emph{trừng phạt}
+chính các phương pháp nhận-biết-đuôi. Quy ước này được áp dụng đồng nhất cho mọi phương pháp huấn
+luyện nhằm bảo đảm so sánh công bằng.
+
+\section{Track 1 --- Huấn luyện từ đầu: can thiệp ở tầng nào giúp đuôi?}
+\label{sec:track1}
+
+Track 1 khảo sát một câu hỏi có cấu trúc: nếu cố định backbone và chỉ can thiệp ở những \emph{tầng}
+khác nhau --- mất mát, bộ phân loại, biểu diễn hay dữ liệu --- thì đuôi cải thiện ra sao?
+Bảng~\ref{tab:track1-map} liệt kê các phương pháp theo tầng can thiệp.
+
+\begin{table}[H]
+\centering
+\caption{Các phương pháp Track 1 phân theo tầng can thiệp.}
+\label{tab:track1-map}
+\begin{tabular}{lll}
+\toprule
+\textbf{Phương pháp} & \textbf{Tầng can thiệp} & \textbf{Ý tưởng cốt lõi} \\
+\midrule
+\texttt{baseline} & --- & ResNet-18 $+$ cross-entropy (mốc tham chiếu) \\
+\texttt{balanced\_softmax} & mất mát & cộng log class-prior vào logit \\
+\texttt{decoupling} (cRT) & bộ phân loại & học đặc trưng rồi huấn luyện lại head cân bằng \\
+\texttt{supcon} & biểu diễn & học tương phản có giám sát $+$ cRT \\
+\texttt{cmo} & dữ liệu & CutMix thiên-đuôi $+$ Balanced Softmax \\
+\texttt{meta} & few-shot & episodic Prototypical Network \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Baseline (Cross-Entropy)}
+Mốc tham chiếu là ResNet-18 gắn một đầu tuyến tính, huấn luyện bằng cross-entropy chuẩn
+$\mathcal{L}_{\text{CE}}=-\frac{1}{B}\sum_i \log p_{y_i}(x_i)$ với $p=\mathrm{softmax}(z)$.
+Cross-entropy ngầm giả định prior lớp đồng đều; trên dữ liệu lệch, chuẩn trọng số $\lVert w_c\rVert$
+tăng theo tần suất lớp, làm logit head bị thổi phồng đến mức lớp tail gần như không bao giờ thắng
+được phép argmax. Đây chính là hiện tượng mà các phương pháp tiếp theo tìm cách khắc phục.
+
+\subsection{Balanced Softmax (can thiệp ở mất mát)}
+\paragraph{Động lực.} Nếu gốc rễ của vấn đề là mô hình ngầm giả định prior đồng đều, thì cách rẻ
+nhất để sửa là \emph{nói cho nó biết prior thật} và bù trừ ngay trong logit. Balanced Softmax (Ren
+và cộng sự, NeurIPS 2020) làm đúng điều đó.
+\paragraph{Công thức.} Gọi $\pi_c = n_c/\sum_j n_j$ là prior lớp ước lượng từ tần suất train. Logit
+được dịch bằng log-prior trước khi đưa vào cross-entropy:
+\begin{equation}
+\mathcal{L}_{\text{BS}} = \mathrm{CE}\big(z + \log \boldsymbol\pi,\; y\big),
+\qquad \log\pi_c = \log\frac{n_c}{\sum_j n_j}.
+\label{eq:balsoftmax}
+\end{equation}
+Trong cài đặt, $\log\boldsymbol\pi$ được lưu như một buffer và chỉ cộng vào lúc huấn luyện; khi test
+ta dùng logit thô (giả định test cân bằng). Trực giác là lớp head có $\log\pi_c$ lớn (ít âm) nên bị
+``phạt'' nhiều hơn, còn lớp tail được ``trợ giá'', nhờ vậy gradient được cân bằng lại.
+\paragraph{Ưu/nhược.} Phương pháp này không thêm tham số, không đổi kiến trúc, chỉ thay một dòng
+tiêu chí --- vừa rất rẻ vừa hiệu quả. Hạn chế của nó là không tác động tới phần \emph{biểu diễn}:
+nếu đặc trưng của lớp tail vốn đã nghèo nàn vì quá ít dữ liệu thì việc điều chỉnh logit cũng chỉ
+giúp được tới một giới hạn nhất định.
+
+\subsection{Decoupling / cRT (can thiệp ở bộ phân loại)}
+\paragraph{Động lực.} Kang và cộng sự (ICLR 2020) chỉ ra rằng trên long-tail, \emph{đặc trưng học
+được thực ra đã đủ tốt}, cái lệch nằm ở \emph{bộ phân loại}. Từ nhận định đó, họ đề xuất tách
+(decouple) thành hai pha: học biểu diễn trước, rồi huấn luyện lại riêng đầu phân loại.
+\paragraph{Thuật toán.} Pha thứ nhất huấn luyện baseline bình thường trên dữ liệu lệch để thu được
+một encoder tốt. Pha thứ hai \emph{đóng băng encoder}, thay đầu tuyến tính bằng một đầu mới khởi tạo
+lại, rồi huấn luyện lại trong ít epoch (\emph{class-balanced re-training}, cRT) với \textbf{bộ lấy
+mẫu cân bằng lớp} có trọng số tỉ lệ $1/n_c$. Một chi tiết cài đặt then chốt là khi cRT, encoder được
+đặt ở chế độ \texttt{eval} để \emph{đóng băng thống kê BatchNorm} (cờ \texttt{eval\_encoder}); nếu
+không, thống kê BN sẽ trôi theo phân bố cân bằng và làm hỏng đặc trưng đã đóng băng.
+\paragraph{Ưu/nhược.} Cách làm này tách bạch rõ nguồn thiên lệch và rất rẻ ở pha hai. Tuy nhiên chất
+lượng cuối cùng vẫn bị khoá bởi đặc trưng học ở pha một: nếu đuôi quá nghèo, việc cân bằng lại head
+cũng không thể tạo ra đặc trưng mới.
+
+\subsection{Supervised Contrastive (SupCon, can thiệp ở biểu diễn)}
+\paragraph{Động lực.} Nếu một phần nút thắt nằm ở \emph{biểu diễn}, ta nên học một không gian đặc
+trưng nơi các mẫu cùng lớp tụm lại và khác lớp tách xa, độc lập với đầu phân loại. SupCon (Khosla và
+cộng sự, 2020) là một hàm mất mát tương phản có giám sát phục vụ đúng mục đích này.
+\paragraph{Công thức.} Với mỗi mẫu neo $i$ trong batch (embedding $z$ đã chuẩn hoá $L_2$, nhiệt độ
+$\tau$), gọi $P(i)$ là tập mẫu cùng lớp:
+\begin{equation}
+\mathcal{L}_{\text{SupCon}} = \sum_{i}\frac{-1}{|P(i)|}\sum_{p\in P(i)}
+\log\frac{\exp(z_i^\top z_p/\tau)}{\sum_{a\neq i}\exp(z_i^\top z_a/\tau)}.
+\label{eq:supcon}
+\end{equation}
+Cài đặt sử dụng biến thể \emph{two-crop} (mỗi ảnh hai phép tăng cường), một đầu chiếu (projection
+head) dạng MLP $512\!\to\!512\!\to\!128$ và $\tau=0.07$. SupCon \emph{chỉ} pretrain trên tập train
+để tránh rò rỉ validation; sau pretrain, encoder được đóng băng và áp cRT để tạo đầu phân loại cân
+bằng.
+\paragraph{Ưu/nhược.} SupCon có tiềm năng tạo ra biểu diễn mạnh hơn, nhưng thực nghiệm cho thấy một
+hạn chế rõ: trên đuôi cực ngắn, số cặp dương của lớp tail quá ít nên SupCon khó hình thành cụm tốt
+cho tail (kết quả thực nghiệm sẽ xác nhận điều này).
+
+\subsection{CMO / Mixup / CutMix (can thiệp ở dữ liệu)}
+\paragraph{Động lực.} Nếu dữ liệu tail quá thiếu, một hướng tự nhiên là \emph{tổng hợp thêm} ví dụ
+tail từ những gì đang có. Mixup và CutMix là hai phép tăng cường trộn ảnh, còn CMO (Context-rich
+Minority Oversampling, Park và cộng sự, CVPR 2022) là biến thể thiên-đuôi.
+\paragraph{Công thức.} Với hệ số trộn $\lambda\sim\mathrm{Beta}(\alpha,\alpha)$, ba biến thể được
+định nghĩa như sau:
+\begin{itemize}
+  \item \emph{Mixup}: $\tilde x = \lambda x_i + (1-\lambda)x_j$;
+  \item \emph{CutMix}: dán một mảnh chữ nhật của $x_j$ lên $x_i$, với $\lambda$ bằng tỉ lệ diện tích
+        giữ lại;
+  \item \emph{CMO}: tương tự CutMix nhưng \emph{ảnh nền $x_i$ lấy từ luồng instance-balanced} còn
+        \emph{mảnh dán $x_j$ lấy từ luồng class-balanced} (giàu lớp hiếm); nhờ vậy lớp hiếm được dán
+        lên nhiều bối cảnh head đa dạng, tạo ra các ví dụ tail mới giàu ngữ cảnh.
+\end{itemize}
+Cả ba đều dùng mất mát hai-nhãn-mềm $\lambda\,\mathrm{CE}(\tilde x,y_i)+(1-\lambda)\mathrm{CE}(\tilde x,y_j)$.
+Trong project, \texttt{cmo} là một phương pháp \emph{gộp}: CMO ($\alpha=1$, xác suất trộn $0.5$) kết
+hợp với Balanced Softmax làm tiêu chí, nên nó can thiệp đồng thời ở cả tầng \emph{dữ liệu} và tầng
+\emph{mất mát}.
+\paragraph{Ưu/nhược.} CMO làm giàu đuôi một cách trực tiếp mà không cần mạng phụ, và thực nghiệm cho
+thấy đây là phương pháp from-scratch mạnh nhất. Dù vậy, các ảnh trộn vẫn bị giới hạn bởi 5 ảnh gốc
+của lớp tail nên không thể tạo ra ngữ nghĩa thực sự mới.
+
+\subsection{Meta-learning --- Prototypical Network (trục few-shot)}
+\paragraph{Động lực.} Nếu vấn đề cốt lõi là ``ít mẫu'', vậy hãy \emph{huấn luyện mô hình để giỏi học
+từ ít mẫu}. ProtoNet huấn luyện theo từng \emph{episode} $N$-way $K$-shot, mô phỏng đúng kịch bản
+few-shot.
+\paragraph{Công thức.} Mỗi episode lấy $N$ lớp, mỗi lớp $K$ ảnh support cùng một số ảnh query.
+Prototype của lớp $c$ là trung bình đặc trưng support, $\mu_c=\frac{1}{K}\sum_{x\in S_c}\phi(x)$, và
+query được phân loại theo \emph{khoảng cách Euclid bình phương âm}
+$\text{logit}_c(x)=-\lVert\phi(x)-\mu_c\rVert_2^2$ rồi đưa qua cross-entropy. Cấu hình dùng là
+$5$-way $5$-shot $15$-query với Adam $\text{lr}=10^{-3}$. Khi đánh giá đủ $100$-way, prototype được
+tính trên toàn bộ train rồi gán theo nearest-prototype.
+\paragraph{Ưu/nhược.} Vì phân loại theo khoảng cách nên ProtoNet \emph{bất biến} với chuẩn trọng số,
+qua đó tránh được kiểu thiên lệch head của đầu tuyến tính. Mặt khác, ProtoNet vốn thiết kế cho
+few-way nên hoạt động yếu ở $100$-way (đúng như kỳ vọng); do đó nhóm báo cáo nó như một nhánh
+\emph{bonus} trên trục few-shot chứ không kỳ vọng nó dẫn đầu bảng $100$-way.
+
+\section{Track 2 --- Tái dùng checkpoint, không huấn luyện lại}
+\label{sec:track2}
+
+Track 2 trả lời câu hỏi: liệu có thể vắt thêm điểm số mà không cần huấn luyện lại? Tất cả các kỹ
+thuật ở đây chỉ chạy ở pha inference trên những checkpoint sẵn có từ Track 1.
+
+Kỹ thuật đầu tiên là \textbf{ensemble $+$ TTA}, lấy trung bình xác suất của nhiều mô hình
+$\bar p=\frac{1}{M}\sum_m p^{(m)}$ rồi argmax. Test-time augmentation (TTA) lật ngang ảnh và trung
+bình thêm; vì lỗi của các mô hình không tương quan hoàn toàn nên việc trung bình giúp giảm phương
+sai. Cách này rẻ nhưng chủ yếu cải thiện head.
+
+\textbf{Tier-fusion} trộn xác suất \emph{tham số} (đầu tuyến tính, mạnh ở head) với xác suất
+\emph{prototype} (nearest-class-mean, mạnh ở tail) theo trọng số \emph{phụ thuộc nhóm-shot}:
+$p_{\text{blend}}[c]=(1-w_{g(c)})\,p_{\text{param}}[c]+w_{g(c)}\,p_{\text{proto}}[c]$, với trọng số mặc
+định $w_{\text{many}}{=}0,\,w_{\text{medium}}{=}0.3,\,w_{\text{few}}{=}0.8$. Đây là sự vận dụng bài
+học của meta-learning --- tin prototype hơn ở đuôi --- và vì trọng số được áp theo \emph{cột-lớp}
+nên ta không cần biết nhãn test.
+
+\textbf{$\tau$-normalization} trực tiếp gỡ thiên lệch chuẩn trọng số (Kang và cộng sự, 2020) bằng
+cách chuẩn hoá lại trọng số lớp $\hat w_c = w_c/\lVert w_c\rVert^{\tau}$, với $\tau$ chọn trên
+validation. Giá trị $\tau{=}0$ giữ nguyên trọng số, còn $\tau{=}1$ là chuẩn hoá hoàn toàn. Vì norm
+của head lớn hơn, việc chia cho norm mũ $\tau$ sẽ ``xẹp'' logit head và trả lại công bằng cho tail
+mà không cần huấn luyện lại bất cứ thứ gì.
+
+Cuối cùng, \textbf{CLIP fusion (Vision-Language)} đóng vai trò bước chuyển tiếp sang Track 3. Mô hình
+thị giác nhỏ giỏi head nhưng kém tail, trong khi CLIP zero-shot nhận diện qua \emph{tên lớp} và
+không hề thấy dữ liệu lệch của ta nên mạnh đều ở mọi lớp. Ta trộn lồi xác suất của hai chuyên gia,
+$p=\alpha\,p_{\text{CLIP}}+(1-\alpha)\,p_{\text{vision}}$, với $\alpha$ là \emph{một số chung} chọn
+trên validation theo balanced accuracy. Ở đây không có chuyện ``đoán mẫu nào hiếm''; ta chỉ trộn cho
+mọi lớp rồi argmax.
+
+\section{Track 3 --- Thích nghi mô hình nền tảng đóng băng}
+\label{sec:track3}
+
+Đây là phần trọng tâm của đề tài, xuất phát từ một luận điểm: 5 ảnh là không đủ để \emph{học từ
+đầu}, nhưng đủ để \emph{thích nghi nhẹ} một mô hình nền tảng vốn đã hiểu thế giới. Mọi phương pháp
+trong track này đều \textbf{đóng băng backbone} và chỉ học rất ít tham số trên \emph{đặc trưng đã
+trích sẵn và cache}, nên cực nhẹ và phù hợp với môi trường Kaggle. Hình~\ref{fig:fm-pipeline} mô tả
+pipeline chung.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={rectangle, rounded corners, draw, thick, align=center, minimum height=0.95cm},
+  arr/.style={-{Stealth[length=2.5mm]}, thick},
+]
+  \node[box, fill=gray!10] (img) {Ảnh\\(train/val/test)};
+  \node[box, fill=blue!10, right=1.1cm of img] (bb) {Backbone\\ \textbf{đóng băng}\\\scriptsize CLIP / DINOv2};
+  \node[box, fill=blue!6, right=1.1cm of bb] (feat) {Đặc trưng\\ \textbf{cache}\\\scriptsize (trích 1 lần)};
+  \node[box, fill=green!12, right=1.1cm of feat] (adapt) {Module nhẹ\\\scriptsize adapter / cache / head\\($<$1\% tham số)};
+  \node[box, fill=orange!12, right=1.0cm of adapt] (out) {Logit\\ $\to$ argmax};
+  \draw[arr] (img) -- (bb);
+  \draw[arr] (bb) -- (feat);
+  \draw[arr] (feat) -- (adapt);
+  \draw[arr] (adapt) -- (out);
+  \node[below=0.15cm of bb, font=\scriptsize, text=blue!50!black] {không gradient};
+  \node[below=0.15cm of adapt, font=\scriptsize, text=green!40!black] {huấn luyện (Balanced Softmax)};
+\end{tikzpicture}
+\caption{Pipeline chung của Track 3: đóng băng backbone, trích và cache đặc trưng một lần, rồi chỉ
+huấn luyện một module nhẹ ($<$1\% tham số) bằng loss nhận-biết-đuôi.}
+\label{fig:fm-pipeline}
+\end{figure}
+
+\subsection{CLIP zero-shot và prototype giàu bằng LLM (nguồn: ngôn ngữ)}
+\paragraph{CLIP zero-shot.} CLIP gắn ảnh và văn bản vào cùng một không gian. Với mỗi lớp, ta mã hoá
+câu mẫu ``\texttt{a photo of a \{tên lớp\}}'' thành vector văn bản chuẩn hoá $t_c$; logit zero-shot
+là độ tương đồng cosine có nhiệt độ $z_c(x)=s\cdot \hat\phi(x)^\top t_c$ với
+$s=\exp(\text{logit\_scale})$. Vì không huấn luyện gì và không thấy dữ liệu lệch, CLIP không mang
+thiên lệch head/tail. Nhóm sử dụng \textbf{ViT-B/32} (cấu hình nhẹ nhất).
+\paragraph{Prototype giàu bằng LLM (CuPL).} Câu ``a photo of a \{\}'' khá mỏng về thông tin. Theo
+tinh thần CuPL (Pratt và cộng sự, ICCV 2023), nhóm để một LLM nhỏ (\texttt{Qwen2.5-3B-Instruct})
+sinh khoảng 8 mô tả thị giác cho mỗi lớp (về hình dáng, màu sắc, kết cấu...), mã hoá tất cả bằng
+CLIP rồi \emph{trung bình} lại thành một prototype văn bản giàu hơn $\bar t_c$. Các mô tả này được
+sinh một lần và cache, dùng cho cả zero-shot lẫn khởi tạo đầu LIFT.
+
+\subsection{Tip-Adapter và Tip-Adapter-F (nguồn: truy hồi)}
+\paragraph{Trực giác.} Ý tưởng ở đây là phân loại bằng \emph{truy hồi}: ảnh test giống ảnh train nào
+trong ``bộ nhớ'' thì bầu theo lớp đó (k-NN mềm), rồi cộng với điểm zero-shot của CLIP. Đây chính là
+Tip-Adapter (Zhang và cộng sự, ECCV 2022), một phương pháp \emph{không cần huấn luyện}.
+\paragraph{Công thức.} Cache gồm \emph{khoá} $\mathbf{F}$ (đặc trưng train) và \emph{giá trị}
+$\mathbf{L}$ (nhãn one-hot). Với truy vấn $\hat\phi(x)$:
+\begin{equation}
+\text{logit}_{\text{Tip}}(x) = \underbrace{s\,\hat\phi(x)^\top \mathbf{T}^\top}_{\text{zero-shot}}
++ \alpha\cdot \underbrace{\exp\!\big(-\beta(1-\hat\phi(x)\mathbf{F}^\top)\big)\,\mathbf{L}}_{\text{cache (k-NN mềm)}},
+\label{eq:tip}
+\end{equation}
+trong đó $\beta$ điều khiển độ sắc của trọng số lân cận còn $\alpha$ là mức tin cache; cả hai được
+\emph{grid-search trên validation} theo balanced accuracy ($\alpha\in\{1,2,5,\dots,100\}$,
+$\beta\in\{1,2,3,5,7\}$). Một điểm tinh tế cho long-tail là cache mặc định sẽ lệch về head (head có
+nhiều khoá hơn), nên nhóm dùng \textbf{cache cân bằng}: chia mỗi cột-lớp cho số mẫu của lớp đó, biến
+tổng thành \emph{trung bình} để lớp hiếm có tiếng nói ngang với lớp phổ biến.
+\paragraph{Tip-Adapter-F.} Đây là biến thể có huấn luyện nhẹ: ta coi các khoá cache như trọng số của
+một lớp tuyến tính (khởi tạo bằng chính các khoá) rồi \emph{tinh chỉnh} vài epoch với Balanced
+Softmax (AdamW, $\text{lr}=10^{-3}$, 20 epoch). Vì khởi tạo từ khoá, tại bước 0 nó \emph{đúng bằng}
+Tip-Adapter không huấn luyện.
+
+\subsection{LIFT --- thích nghi nhẹ với khởi tạo ngữ nghĩa (nguồn: vision-language)}
+\paragraph{Động lực.} Thông điệp gốc của LIFT (Shi và cộng sự, ICML 2024) là \emph{fine-tune nặng
+làm hại đuôi}. Nhóm giữ trọn tinh thần đó qua ba thành phần, minh hoạ ở Hình~\ref{fig:lift-arch}:
+\begin{enumerate}
+  \item \textbf{Residual Adapter có cổng (gate).} Adapter có dạng
+        $h = x + g\cdot \text{Up}(\mathrm{ReLU}(\text{Down}(x)))$ với bottleneck $64$ chiều và cổng $g$
+        \emph{khởi tạo bằng 0}. Tại bước 0, adapter là ánh xạ đồng nhất, nên mô hình \emph{đúng bằng
+        CLIP zero-shot} và chỉ rời khỏi đó khi việc huấn luyện thực sự cải thiện được đuôi. Adapter chỉ
+        chiếm dưới 1\% tham số so với backbone.
+  \item \textbf{Cosine classifier khởi tạo từ feature văn bản.} Logit bằng nhiệt độ nhân với cosine
+        giữa đặc trưng và trọng số lớp, cả hai cùng chuẩn hoá $L_2$. Trọng số được \emph{khởi tạo bằng
+        prototype văn bản} của tên lớp, nhờ đó ngay cả lớp 5 ảnh cũng bắt đầu từ một prototype có nghĩa
+        thay vì ngẫu nhiên. Việc dùng cosine còn khiến logit \emph{bất biến} với chuẩn đặc trưng, gỡ
+        thêm một nguồn thiên lệch.
+  \item \textbf{Loss logit-adjusted.} Mô hình được huấn luyện bằng chính \texttt{BalancedSoftmaxLoss}
+        (công thức~\ref{eq:balsoftmax}) để đuôi không bị head lấn át, với AdamW, $\text{lr}=10^{-3}$,
+        weight decay $10^{-2}$, $50$ epoch, và chọn epoch tốt nhất theo balanced val.
+\end{enumerate}
+Cần nói thêm rằng đây là biến thể LIFT ở \emph{mức đặc trưng} (adapter chạy trên feature đã cache)
+nhằm giữ độ nhẹ; tuy vậy thông điệp ``đóng băng backbone $+$ học $<$1\% tham số $+$ loss
+nhận-biết-đuôi'' vẫn được bảo toàn.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={rectangle, rounded corners, draw, thick, align=center, minimum height=0.85cm, minimum width=1.7cm},
+  arr/.style={-{Stealth[length=2.5mm]}, thick},
+]
+  \node[box, fill=blue!6] (f) {feature $x$\\\scriptsize (đóng băng)};
+  \node[box, fill=green!12, right=1.0cm of f] (down) {Down\\\scriptsize $D\to 64$};
+  \node[box, fill=green!12, right=0.5cm of down] (relu) {ReLU};
+  \node[box, fill=green!12, right=0.5cm of relu] (up) {Up\\\scriptsize $64\to D$};
+  \node[circle, draw, thick, fill=yellow!20, right=0.6cm of up] (gate) {$\times g$};
+  \node[circle, draw, thick, right=0.6cm of gate] (add) {$+$};
+  \node[box, fill=orange!12, right=0.8cm of add] (cos) {Cosine head\\\scriptsize init $=t_c$};
+  \node[box, fill=red!8, right=0.7cm of cos] (loss) {Balanced\\Softmax};
+
+  \draw[arr] (f) -- (down);
+  \draw[arr] (down) -- (relu);
+  \draw[arr] (relu) -- (up);
+  \draw[arr] (up) -- (gate);
+  \draw[arr] (gate) -- (add);
+  \draw[arr] (add) -- (cos);
+  \draw[arr] (cos) -- (loss);
+  \draw[arr] (f.south) to[out=-40,in=-140] (add.south);
+  \node[below=0.05cm of gate, font=\scriptsize, text=orange!60!black] {$g{=}0$ lúc đầu};
+\end{tikzpicture}
+\caption{Kiến trúc LIFT: residual adapter có cổng ($g{=}0$ khởi tạo $\to$ bắt đầu từ zero-shot) $+$
+cosine head khởi tạo từ feature văn bản, huấn luyện bằng Balanced Softmax. Backbone đóng băng.}
+\label{fig:lift-arch}
+\end{figure}
+
+\subsection{DINOv2-LIFT --- mô hình nền tảng thị giác thứ hai (nguồn: thị giác)}
+\paragraph{Động lực.} CLIP là một mô hình vision-language; câu hỏi đặt ra là nếu mượn một mô hình
+nền tảng \emph{thị giác thuần} được huấn luyện \emph{tự giám sát} (không ngôn ngữ) thì liệu nó có
+bắt được những chi tiết mà CLIP bỏ lỡ? Để trả lời, nhóm dùng \textbf{DINOv2}
+(\texttt{dinov2\_vits14}, ViT-S/14, đặc trưng CLS $384$ chiều). Vì DINOv2 không có bộ mã hoá văn bản
+nên cũng không có đường zero-shot; do đó đầu cosine của LIFT được khởi tạo bằng
+\textbf{nearest-class-mean} (trung bình đặc trưng train mỗi lớp) thay cho prototype văn bản. Phần
+còn lại --- adapter và Balanced Softmax --- giữ nguyên như LIFT, biến đây thành một thí nghiệm so
+sánh trực tiếp: cùng pipeline LIFT, chỉ đổi backbone.
+
+\subsection{Sinh đặc trưng bằng diffusion và feature mixup (nguồn: sinh dữ liệu / augment)}
+\paragraph{Feature diffusion (LDMLR-style).} Thay vì sinh \emph{ảnh}, nhóm huấn luyện một DDPM nhỏ
+\emph{trên không gian đặc trưng}: một MLP khử nhiễu có điều kiện theo lớp và bước thời gian (lịch
+$\beta$ tuyến tính, $100$ bước), học dự đoán nhiễu theo MSE. Khi sinh, ta lấy mẫu ngược từ Gauss để
+\emph{tổng hợp đặc trưng cho lớp tail} đến một mức mục tiêu (mặc định là trung vị số mẫu), rồi huấn
+luyện LIFT trên hỗn hợp đặc trưng \emph{thật $+$ tổng hợp}. Ý tưởng là cân bằng lại tập huấn luyện ở
+mức feature, vốn rẻ hơn nhiều so với sinh ảnh.
+\paragraph{Feature mixup (CMO ở mức feature).} Ở đây nhóm chuyển ý tưởng CMO vào không gian đặc
+trưng: trộn lồi một batch với các đối tác lấy từ luồng \emph{thiên-đuôi} (trọng số $\propto 1/n_c$),
+$\tilde x=\lambda x_a+(1-\lambda)x_b$, $\lambda\sim\mathrm{Beta}(\alpha,\alpha)$, với mất mát
+hai-nhãn-mềm; cơ chế này được kích hoạt qua \texttt{train\_lift(..., mixup\_alpha>0)}. Việc so sánh
+\texttt{lift\_clip\_mixup} (trộn feature thật) với \texttt{lift\_clip\_diff} (sinh feature) chính là
+để trả lời: kiểu augment nào giúp đuôi nhiều hơn?
+
+\subsection{Generalized Logit Adjustment (GLA) --- đo công bằng}
+\paragraph{Động lực.} Bản thân mô hình nền tảng cũng được huấn luyện trên dữ liệu web \emph{lệch},
+nên mang sẵn một thiên lệch nhãn từ pretraining. GLA (Zhu và cộng sự, NeurIPS 2023) gỡ thiên lệch
+đó, qua đó tổng quát hoá Balanced Softmax sang ``prior của foundation model''.
+\paragraph{Công thức.} Ta ước lượng log-bias từ \emph{trung bình dự đoán} của mô hình trên tập đánh
+giá (transductive, không dùng nhãn), $b_c=\log\big(\frac{1}{N}\sum_i \mathrm{softmax}(z(x_i))_c\big)$,
+rồi điều chỉnh $\hat z = z - \gamma\, b$ với cường độ $\gamma$ chọn trên validation. Do lưới $\gamma$
+luôn chứa giá trị $0$, GLA không bao giờ làm xấu đi kết quả được chọn.
+
+\subsection{Fusion nhận-biết-đuôi (kiểm bù trừ)}
+\paragraph{Động lực.} Nếu mỗi nguồn tri thức mạnh ở một vùng khác nhau của đuôi thì việc gộp chúng
+đúng cách phải tốt hơn từng nguồn riêng lẻ --- và đây cũng chính là phép kiểm \emph{bù trừ}. Fusion
+ở đây tổng quát hoá tier-fusion/CLIP-fusion sang $N$ chuyên gia, với \textbf{trọng số riêng cho từng
+nhóm-shot} (many/medium/few) tinh chỉnh trên validation. Vì validation thiếu lớp tail, trọng số
+nhóm \emph{few} được \emph{buộc theo nhóm medium} (ghi rõ trong cài đặt, không suy đoán).
+\paragraph{Hai biến thể.} Biến thể thứ nhất, \texttt{fusion\_tailaware}, tìm trọng số trộn lồi theo
+lưới đơn hình (simplex grid). Biến thể thứ hai, \texttt{fusion\_greedy}, dùng \emph{greedy ensemble
+selection} (Caruana và cộng sự, ICML 2004; theo tinh thần greedy soup của Wortsman và cộng sự, ICML
+2022): bắt đầu từ chuyên gia đơn tốt nhất mỗi nhóm và chỉ \emph{thêm} chuyên gia nếu việc đó cải
+thiện balanced accuracy của nhóm. Theo cách xây dựng, greedy luôn \emph{$\ge$ chuyên gia đơn tốt
+nhất} trên validation, nên không bị tụt ở many/medium như lưới có thể gặp khi một chuyên gia (DINOv2)
+áp đảo.
+
+\section{Pipeline đề xuất của nhóm}
+\label{sec:proposed}
+
+Tổng hợp lại, ``phương pháp đề xuất'' của nhóm không phải một thuật toán đơn lẻ mà là một
+\emph{khung nghiên cứu có thiết kế}: một pipeline thống nhất trải qua bốn giai đoạn, trong đó mỗi
+thành phần cũ được \emph{tái dùng} làm công cụ cho giai đoạn sau (Bảng~\ref{tab:reuse}).
+
+\begin{table}[H]
+\centering
+\caption{Tái dùng có hệ thống các thành phần xuyên suốt bốn giai đoạn.}
+\label{tab:reuse}
+\begin{tabular}{p{4.2cm} p{8.6cm}}
+\toprule
+\textbf{Thành phần (xuất xứ)} & \textbf{Được tái dùng làm gì ở Track 3} \\
+\midrule
+Balanced Softmax (Track 1, loss) & Loss huấn luyện của \emph{mọi} expert LIFT / Tip-Adapter-F; được
+GLA tổng quát hoá sang prior của foundation model. \\
+CMO (Track 1, dữ liệu) & Chuyển vào không gian feature thành \texttt{lift\_clip\_mixup}. \\
+Tier-fusion / CLIP-fusion (Track 2) & Tổng quát hoá thành fusion $N$-expert nhận-biết-đuôi (kiểm bù trừ). \\
+Mô hình \texttt{cmo} from-scratch (Track 1) & Mốc \emph{đối chứng} ``không tri thức ngoài'' cho Phase 3. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Một số thiết kế then chốt cùng lý do của chúng có thể nêu ra như sau. Trước hết là việc
+\emph{đóng băng backbone và chỉ học dưới 1\% tham số}: với 5 ảnh/lớp, fine-tune nặng sẽ overfit và
+``quên'' tri thức zero-shot ở đuôi --- điều sẽ được kiểm chứng bằng Ablation B --- trong khi việc
+cache feature một lần khiến toàn bộ Track 3 chạy được trong vài phút trên GPU Kaggle. Tiếp theo là
+\emph{khởi tạo có ngữ nghĩa}: cosine head được khởi tạo từ feature văn bản (CLIP) hoặc class-mean
+(DINOv2), cho lớp 5 ảnh một điểm xuất phát hợp lý thay vì ngẫu nhiên. Bên cạnh đó, \emph{loss
+nhận-biết-đuôi} (Balanced Softmax / GLA) được dùng xuyên suốt nhằm bảo đảm gradient không bị head
+chi phối ở bất kỳ expert nào. Cuối cùng, \emph{mọi siêu tham số đều được chọn trên validation} chứ
+không đụng tới test, để kết quả thu được là đáng tin cậy.

@@ -1,22 +1,156 @@
 \chapter{Giới thiệu đề tài}
+\label{chap:intro}
 
 \section{Đặt vấn đề}
 
+Các mô hình nhận dạng ảnh hiện đại đạt độ chính xác rất cao khi được huấn luyện trên những bộ dữ
+liệu \emph{cân bằng}, nơi mỗi lớp có số lượng mẫu xấp xỉ nhau, chẳng hạn ImageNet hay CIFAR gốc. Tuy
+nhiên, dữ liệu thu thập trong thế giới thực gần như luôn tuân theo một phân bố tần suất
+\textbf{đuôi-dài} (long-tailed distribution): số lượng mẫu giảm rất nhanh khi đi từ các lớp phổ biến
+(head) sang các lớp hiếm (tail). Đây thực chất là phản ánh của một quy luật tự nhiên --- một vài
+khái niệm xuất hiện thường xuyên, trong khi phần lớn khái niệm còn lại thì hiếm gặp.
+
+Sự mất cân bằng tạo ra một cái bẫy kép cho quá trình học. Trước hết, hàm mục tiêu chuẩn
+(cross-entropy) tối ưu \emph{tổng} sai số trên toàn bộ tập huấn luyện; vì các lớp head đóng góp đại
+đa số mẫu, mô hình bị kéo về phía dự đoán tốt cho head và gần như ``bỏ rơi'' các lớp tail. Tiếp đó,
+nếu đánh giá bằng \emph{độ chính xác thô} (overall accuracy), chỉ số này lại bị các lớp đông mẫu chi
+phối, nên có thể trông rất cao trong khi các lớp hiếm gần như không bao giờ được dự đoán đúng. Hệ
+quả là một mô hình ``đẹp trên giấy'' vẫn có thể hoàn toàn vô dụng đối với chính những lớp mà người
+dùng quan tâm nhất.
+
+Bài toán càng trở nên gay gắt khi đuôi cực ngắn. Trong cấu hình mà nhóm nghiên cứu, lớp hiếm nhất
+chỉ có \textbf{5 ảnh} huấn luyện. Với vỏn vẹn 5 ảnh, việc \emph{học từ đầu} một bộ trích đặc trưng
+sâu cho lớp đó gần như là bất khả thi: mạng không có đủ tín hiệu để khái quát hoá, và mọi can thiệp
+ở mức hàm mất mát hay bộ lấy mẫu cũng chỉ giải quyết được một phần. Chính giới hạn này dẫn nhóm tới
+một câu hỏi sâu hơn: khi dữ liệu của bản thân bài toán đã quá ít, liệu ta có thể \emph{mượn tri thức
+từ bên ngoài} --- từ những mô hình đã được huấn luyện trên lượng dữ liệu khổng lồ --- để cứu lấy
+đuôi hay không?
+
 \section{Tổng quan về bài toán}
 
+\subsection{Phát biểu bài toán}
 
+Xét một tập huấn luyện $\mathcal{D}_{\text{train}}=\{(x_i,y_i)\}_{i=1}^{N}$ gồm ảnh $x_i$ và nhãn
+$y_i\in\{1,\dots,C\}$, trong đó số lượng mẫu mỗi lớp $n_c=|\{i: y_i=c\}|$ chênh lệch rất lớn. Không
+mất tính tổng quát, giả sử các lớp đã được sắp theo thứ tự tần suất giảm dần
+$n_1 \ge n_2 \ge \dots \ge n_C$. Mức độ mất cân bằng được đặc trưng bởi \textbf{hệ số mất cân bằng}
+(imbalance factor):
+\begin{equation}
+\text{IF} = \frac{n_{\max}}{n_{\min}} = \frac{n_1}{n_C}.
+\end{equation}
+Mục tiêu là học một hàm phân loại $f$ hoạt động tốt \emph{đồng đều trên mọi lớp}. Yêu cầu này được
+hiện thực hoá bằng cách đánh giá trên một tập kiểm tra \textbf{cân bằng} $\mathcal{D}_{\text{test}}$,
+tức mỗi lớp có cùng số ảnh. Khi tập test cân bằng, độ chính xác thô trùng với \emph{độ chính xác cân
+bằng} (balanced accuracy --- trung bình recall trên các lớp); do đó đại lượng cần tối ưu chính là
+balanced accuracy và \emph{độ chính xác trên nhóm lớp hiếm} (few-shot accuracy), chứ không phải
+accuracy thô.
+
+\subsection{Các thách thức chính}
+
+Bài toán long-tailed đặt ra một loạt thách thức đan xen. Thứ nhất là \textbf{thiên lệch của hàm mất
+mát}: cross-entropy chuẩn ngầm giả định prior lớp đồng đều, nên trên dữ liệu lệch, gradient bị các
+lớp head chi phối và đẩy biên quyết định lấn sang vùng của các lớp tail. Thứ hai là \textbf{thiên
+lệch của bộ phân loại}: ngay cả khi đặc trưng đã đủ tốt, chuẩn (norm) của vector trọng số ở lớp head
+vẫn lớn hơn lớp tail, khiến logit của head bị thổi phồng một cách hệ thống --- một dạng thiên lệch
+nằm ở \emph{đầu phân loại} chứ không phải ở đặc trưng. Thứ ba là \textbf{sự khan hiếm dữ liệu cực độ
+ở đuôi}: với chỉ 5 ảnh mỗi lớp, phương sai ước lượng rất lớn và mô hình không thể học được biến
+thiên nội lớp như góc nhìn, nền hay ánh sáng chỉ từ vài ví dụ. Bên cạnh đó còn có \textbf{cạm bẫy
+đánh giá}: cả việc dùng accuracy thô lẫn việc chọn mô hình trực tiếp trên tập test đều có thể tạo ra
+kết quả lạc quan giả, nên cần một giao thức đo lường nghiêm ngặt với mô hình được chọn trên một tập
+validation tách riêng. Cuối cùng, độ khó còn thay đổi theo \textbf{bản chất miền dữ liệu}: trên dữ
+liệu \emph{fine-grained} (phân biệt các loài chim rất giống nhau), các lớp chỉ khác biệt ở những chi
+tiết tinh vi, khiến việc học từ ít mẫu càng trở nên nan giải.
+
+\subsection{Mục tiêu của nhóm}
+
+Thay vì theo đuổi một con số state-of-the-art đơn lẻ, nhóm hướng tới việc dựng nên một
+\textbf{bức tranh so sánh trung thực và có chiều sâu} về các họ phương pháp xử lý long-tailed. Toàn
+bộ nghiên cứu được tổ chức theo một mạch tư duy rõ ràng: \emph{đo cho đúng $\rightarrow$ sửa bộ phân
+loại $\rightarrow$ mượn tri thức ngoài}. Điểm thú vị của mạch này là mỗi bước tuy ``rẻ'' hơn (huấn
+luyện ít tham số hơn) nhưng lại cải thiện đuôi nhiều hơn bước trước, và đó chính là thông điệp khoa
+học mà báo cáo muốn chứng minh bằng số liệu thực nghiệm trên hai bộ dữ liệu.
 
 \section{Cách tiếp cận của nhóm chúng tôi}
 
+Toàn bộ thực nghiệm được tổ chức thành \textbf{ba lớp tiếp cận} (track), triển khai qua bốn giai đoạn
+(phase) liên hoàn; Hình~\ref{fig:overview-approach} tóm tắt cấu trúc tổng thể này.
 
+\textbf{Track 1 --- Huấn luyện từ đầu} (Phase 1) sử dụng một mạng ResNet-18 huấn luyện hoàn toàn từ
+đầu trên dữ liệu lệch, nhằm khảo sát câu hỏi: \emph{can thiệp ở tầng nào thì giúp được đuôi?} Các
+phương pháp được sắp xếp theo tầng can thiệp --- mất mát (Balanced Softmax), bộ phân loại
+(Decoupling/cRT), biểu diễn (SupCon), dữ liệu (CMO/Mixup/CutMix), cùng một nhánh meta-learning
+(ProtoNet). Đây vừa là \emph{trần} của việc học từ đầu, vừa đóng vai trò mốc đối chứng cho các track
+sau.
 
+\textbf{Track 2 --- Tái dùng checkpoint, không huấn luyện lại} (Phase 0) khai thác thêm điểm số từ
+các checkpoint đã có mà \emph{không huấn luyện thêm}, thông qua ensemble (kèm TTA), tier-fusion (đầu
+tham số cho head, prototype cho tail), $\tau$-normalization (chuẩn hoá norm trọng số) và CLIP fusion
+(trộn mô hình thị giác với CLIP zero-shot).
 
+\textbf{Track 3 --- Thích nghi mô hình nền tảng đóng băng} (Phase 2 và Phase 3) là phần trọng tâm.
+Thay vì học từ đầu, nhóm \emph{đóng băng} một mô hình nền tảng (CLIP, DINOv2) và chỉ học vài tham số
+nhỏ trên đặc trưng đã được trích sẵn và lưu cache. Phase 2 tập trung vào việc thích nghi CLIP
+(Tip-Adapter, LIFT), còn Phase 3 nâng vấn đề lên thành một câu hỏi nghiên cứu về các \emph{nguồn tri
+thức bên ngoài}.
 
+\subsection{Câu hỏi nghiên cứu trọng tâm}
 
+Đóng góp chính của đề tài nằm ở Phase 3 và được phát biểu thành một câu hỏi nghiên cứu rõ ràng:
 
+\begin{mdframed}
+\textit{Với lớp đuôi chỉ có vài ảnh, loại tri thức bên ngoài nào giúp nhiều nhất --- \textbf{ngôn
+ngữ} (mô tả lớp do LLM sinh ra), \textbf{một mô hình nền tảng thị giác thứ hai} (DINOv2 tự giám
+sát), hay \textbf{sinh dữ liệu} (diffusion sinh đặc trưng đuôi) --- và chúng có \textbf{bù trừ} cho
+nhau hay không?}
+\end{mdframed}
 
+Để câu trả lời đủ độ tin cậy, nhóm khảo sát câu hỏi này trên \emph{hai} bộ dữ liệu khác biệt cả về
+quy mô lớp lẫn bản chất miền: CIFAR-100-LT (100 lớp vật thể tự nhiên, IF$=$100) và CUB-200-LT (200
+loài chim, một bài toán fine-grained, IF$=$10).
 
+\subsection{Những đóng góp chính}
 
+Bám sát mã nguồn và kết quả thực nghiệm, các đóng góp thực tế của nhóm bao gồm:
+\begin{itemize}
+  \item \textbf{Một khung thực nghiệm thống nhất, đa-dataset} cho long-tailed recognition: mọi phương
+        pháp đọc dữ liệu qua cùng một bố cục ImageFolder chuẩn, dùng chung giao thức tách validation
+        và chọn mô hình theo balanced accuracy, nhờ đó so sánh được một cách công bằng. Khung này chạy
+        được trên cả CIFAR-100-LT lẫn CUB-200-LT chỉ bằng việc thay nguồn dữ liệu.
+  \item \textbf{Triển khai và đối chứng đầy đủ ba lớp phương pháp}, từ huấn luyện-từ-đầu (6 phương
+        pháp) đến tái dùng checkpoint (4 kỹ thuật) và thích nghi mô hình nền tảng (CLIP zero-shot,
+        Tip-Adapter, LIFT, DINOv2-LIFT, GLA, fusion), tất cả trên cùng một thước đo.
+  \item \textbf{Một nghiên cứu so sánh có hệ thống ba nguồn tri thức ngoài} (ngôn ngữ / thị giác thứ
+        hai / sinh dữ liệu) trên cùng một đuôi, kèm công cụ đo công bằng (GLA) và phép kiểm bù trừ
+        (fusion nhận-biết-đuôi). Đây là phần mang đậm tính nghiên cứu nhất của đề tài.
+  \item \textbf{Hai nghiên cứu loại trừ (ablation) làm rõ \emph{đóng góp của pipeline} so với sức
+        mạnh của backbone}: (A) tách riêng đóng góp của loss nhận-biết-đuôi và của kiến trúc
+        adapter/cosine-head trên DINOv2; (B) khảo sát độ sâu fine-tune CLIP, qua đó chứng minh bằng
+        số rằng \emph{fine-tune nặng làm hại đuôi} và biện minh cho thiết kế đóng băng.
+  \item \textbf{Các kết luận nhất quán trên cả hai bộ dữ liệu}, trình bày kèm những \emph{kết quả âm
+        trung thực} (mô tả LLM không hơn zero-shot; sinh dữ liệu và mixup không mang lại cải thiện),
+        thể hiện tinh thần khoa học khách quan.
+\end{itemize}
 
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  track/.style={rectangle, rounded corners, draw, thick, align=center, minimum height=1.1cm, text width=3.4cm},
+  arr/.style={-{Stealth[length=3mm]}, thick},
+]
+  \node[track, fill=blue!8]   (t1) {\textbf{Track 1}\\Huấn luyện từ đầu\\\scriptsize ResNet-18 + can thiệp};
+  \node[track, fill=orange!12, right=1.3cm of t1] (t2) {\textbf{Track 2}\\Tái dùng checkpoint\\\scriptsize ensemble, fusion, $\tau$-norm};
+  \node[track, fill=green!12, right=1.3cm of t2]  (t3) {\textbf{Track 3}\\Thích nghi FM đóng băng\\\scriptsize CLIP / DINOv2 + adapter};
 
+  \draw[arr] (t1) -- (t2);
+  \draw[arr] (t2) -- (t3);
 
+  \node[below=0.35cm of t1, text width=3.6cm, align=center, font=\scriptsize] {trần $\approx 0.47$ bal-acc (CIFAR)};
+  \node[below=0.35cm of t2, text width=3.6cm, align=center, font=\scriptsize] {khai thác ``điểm cho không''};
+  \node[below=0.35cm of t3, text width=3.6cm, align=center, font=\scriptsize] {$\approx 0.82$--$0.85$ bal-acc (kết quả chính)};
+\end{tikzpicture}
+\caption{Ba lớp tiếp cận của nhóm theo mạch \emph{đo đúng $\rightarrow$ sửa bộ phân loại
+$\rightarrow$ mượn tri thức ngoài}. Càng sang phải, số tham số huấn luyện càng ít nhưng độ chính xác
+trên đuôi càng cao.}
+\label{fig:overview-approach}
+\end{figure}

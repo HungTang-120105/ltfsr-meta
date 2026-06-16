@@ -1,1 +1,28 @@
 \chapter*{Lời nói đầu}
+\addcontentsline{toc}{chapter}{Lời nói đầu}
+
+Mất cân bằng dữ liệu là một trong những thách thức dai dẳng và mang tính nền tảng của học máy ứng
+dụng. Trên thực tế, rất hiếm khi ta thu thập được một bộ dữ liệu cân bằng hoàn hảo: số ca bệnh hiếm
+luôn ít hơn ca bệnh phổ thông, số loài sinh vật quý hiếm luôn ít hơn loài thường gặp, và số giao
+dịch gian lận bao giờ cũng là thiểu số so với giao dịch hợp lệ. Vì vậy phân bố tần suất lớp thường
+có dạng \emph{đuôi-dài} (long-tailed), trong đó một số ít lớp \emph{phổ biến} (head) chiếm phần lớn
+dữ liệu, còn rất nhiều lớp \emph{hiếm} (tail) chỉ có một lượng mẫu rất nhỏ. Trớ trêu là chính những
+lớp hiếm này lại thường là phần quan trọng nhất đối với ứng dụng.
+
+Trong khuôn khổ học phần \emph{Học máy và Khai phá dữ liệu} (IT3190), báo cáo trình bày kết quả
+nghiên cứu của nhóm về bài toán \textbf{nhận dạng ảnh trên dữ liệu đuôi-dài} (long-tailed image
+recognition). Thay vì chỉ áp dụng một thuật toán đơn lẻ, nhóm chọn cách tiếp cận như một
+\emph{nghiên cứu so sánh có hệ thống}: triển khai và đánh giá một phổ rộng các phương pháp xử lý mất
+cân bằng, trải dài từ những kỹ thuật huấn luyện-từ-đầu kinh điển cho tới việc thích nghi các mô hình
+nền tảng (foundation model) hiện đại. Mục tiêu là trả lời câu hỏi: với các lớp đuôi chỉ có vài ảnh,
+đâu là cách hiệu quả nhất để cải thiện độ chính xác, và loại tri thức bên ngoài nào giúp ích nhiều
+nhất?
+
+Toàn bộ mã nguồn, dữ liệu, log huấn luyện cũng như kết quả thực nghiệm được dẫn ra trong báo cáo đều
+là sản phẩm thực tế của nhóm, chạy trên hai bộ dữ liệu CIFAR-100-LT và CUB-200-LT. Nhóm xin chân
+thành cảm ơn TS.~Ngô Văn Linh đã tận tình hướng dẫn và góp ý trong suốt quá trình thực hiện.
+
+\vspace{0.5cm}
+\begin{flushright}
+\textit{Nhóm sinh viên thực hiện}
+\end{flushright}
