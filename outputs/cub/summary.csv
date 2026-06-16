@@ -7,6 +7,6 @@ Min Class Size,5.0
 Mean Class Size,19.34
 Median Class Size,16.0
 Imbalance Ratio,10.0
-Many Classes,102.0
-Medium Classes,89.0
-Few Classes,9.0
+Many Classes,78.0
+Medium Classes,66.0
+Few Classes,56.0
