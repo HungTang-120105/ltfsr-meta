@@ -1,0 +1,131 @@
+\babel@toc {vietnamese}{}\relax 
+\contentsline {chapter}{Lời nói đầu}{3}{chapter*.2}%
+\contentsline {chapter}{\numberline {1}Giới thiệu đề tài}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Đặt vấn đề}{4}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Tổng quan về bài toán}{4}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Phát biểu bài toán}{4}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Các thách thức chính}{4}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}Mục tiêu của nhóm}{5}{subsection.1.2.3}%
+\contentsline {section}{\numberline {1.3}Cách tiếp cận của nhóm chúng tôi}{5}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Câu hỏi nghiên cứu trọng tâm}{5}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Những đóng góp chính}{5}{subsection.1.3.2}%
+\contentsline {chapter}{\numberline {2}Tiền xử lý dữ liệu}{7}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Đường ống xử lý dữ liệu}{7}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Thu thập dữ liệu}{7}{subsection.2.1.1}%
+\contentsline {paragraph}{CIFAR-100-LT (IF = 100) --- bộ dữ liệu chính.}{7}{paragraph*.4}%
+\contentsline {paragraph}{CUB-200-LT (fine-grained, IF = 10).}{7}{paragraph*.5}%
+\contentsline {subsection}{\numberline {2.1.2}Mô tả tổng quan dữ liệu}{7}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}Phân tích khám phá dữ liệu (EDA)}{8}{subsection.2.1.3}%
+\contentsline {subsubsection}{\numberline {2.1.3.1}Phân tích CIFAR-100-LT}{8}{subsubsection.2.1.3.1}%
+\contentsline {paragraph}{Hình dạng đuôi dài.}{8}{paragraph*.7}%
+\contentsline {paragraph}{Độ lệch của phân bố.}{8}{paragraph*.9}%
+\contentsline {paragraph}{Train lệch nhưng test cân bằng.}{9}{paragraph*.11}%
+\contentsline {paragraph}{Quan sát định tính head và tail.}{9}{paragraph*.13}%
+\contentsline {subsubsection}{\numberline {2.1.3.2}Phân tích CUB-200-LT}{10}{subsubsection.2.1.3.2}%
+\contentsline {paragraph}{Hình dạng đuôi dài.}{10}{paragraph*.15}%
+\contentsline {paragraph}{Độ lệch của phân bố.}{10}{paragraph*.17}%
+\contentsline {paragraph}{Train lệch nhưng test cân bằng.}{11}{paragraph*.19}%
+\contentsline {paragraph}{Quan sát định tính head và tail.}{11}{paragraph*.21}%
+\contentsline {paragraph}{Nhận xét.}{12}{paragraph*.23}%
+\contentsline {subsection}{\numberline {2.1.4}Làm sạch dữ liệu (Data Cleaning)}{12}{subsection.2.1.4}%
+\contentsline {subsection}{\numberline {2.1.5}Kết luận}{12}{subsection.2.1.5}%
+\contentsline {chapter}{\numberline {3}Cơ sở lý thuyết}{14}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Khung chung và ký hiệu}{14}{section.3.1}%
+\contentsline {paragraph}{Bộ trích đặc trưng (backbone).}{14}{paragraph*.24}%
+\contentsline {paragraph}{Chọn mô hình theo balanced accuracy.}{14}{paragraph*.25}%
+\contentsline {paragraph}{Không gian đánh giá và các nhóm lớp.}{14}{paragraph*.26}%
+\contentsline {paragraph}{Giao thức báo cáo công bằng (Reporting Protocols).}{14}{paragraph*.27}%
+\contentsline {section}{\numberline {3.2}Track 1 --- Huấn luyện từ đầu: can thiệp ở tầng nào giúp đuôi?}{15}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Baseline (Cross-Entropy)}{15}{subsection.3.2.1}%
+\contentsline {paragraph}{Tại sao Baseline thất bại trên long-tail?}{15}{paragraph*.29}%
+\contentsline {paragraph}{Biểu hiện cụ thể: weight norm và logit thổi phồng.}{15}{paragraph*.30}%
+\contentsline {paragraph}{Trực giác hình học.}{15}{paragraph*.31}%
+\contentsline {paragraph}{Hai hướng khắc phục.}{15}{paragraph*.32}%
+\contentsline {subsection}{\numberline {3.2.2}Balanced Softmax (can thiệp ở mất mát)}{16}{subsection.3.2.2}%
+\contentsline {paragraph}{Động lực.}{16}{paragraph*.33}%
+\contentsline {paragraph}{Nền tảng xác suất.}{16}{paragraph*.34}%
+\contentsline {paragraph}{Công thức tương đương dùng trong thực hành.}{16}{paragraph*.35}%
+\contentsline {paragraph}{Trực giác hoạt động.}{16}{paragraph*.36}%
+\contentsline {paragraph}{Nền tảng lý thuyết: generalization error bound.}{16}{paragraph*.37}%
+\contentsline {paragraph}{Ưu và nhược điểm.}{16}{paragraph*.38}%
+\contentsline {subsection}{\numberline {3.2.3}Decoupling / cRT (can thiệp ở bộ phân loại)}{17}{subsection.3.2.3}%
+\contentsline {paragraph}{Động lực.}{17}{paragraph*.39}%
+\contentsline {paragraph}{Cơ chế: tại sao classifier bị lệch sau joint training?}{17}{paragraph*.40}%
+\contentsline {paragraph}{Thuật toán hai pha.}{17}{paragraph*.41}%
+\contentsline {paragraph}{Ưu và nhược điểm.}{17}{paragraph*.42}%
+\contentsline {subsection}{\numberline {3.2.4}Supervised Contrastive (SupCon, can thiệp ở biểu diễn)}{17}{subsection.3.2.4}%
+\contentsline {paragraph}{Động lực.}{17}{paragraph*.43}%
+\contentsline {paragraph}{Hai formulation và lý do chọn $\mathcal {L}^{sup}_{out}$.}{17}{paragraph*.44}%
+\contentsline {paragraph}{Cấu trúc two-stage và vai trò của projection head.}{18}{paragraph*.45}%
+\contentsline {paragraph}{Ưu và nhược điểm.}{18}{paragraph*.46}%
+\contentsline {paragraph}{Tại sao SupCon cần đi kèm cRT? \textnormal {(phân tích của nhóm)}}{18}{paragraph*.47}%
+\contentsline {subsection}{\numberline {3.2.5}CMO / Mixup / CutMix (can thiệp ở dữ liệu)}{18}{subsection.3.2.5}%
+\contentsline {paragraph}{Động lực.}{18}{paragraph*.48}%
+\contentsline {paragraph}{Mixup và CutMix.}{18}{paragraph*.49}%
+\contentsline {paragraph}{CMO: bất đối xứng phân phối là điểm mấu chốt.}{19}{paragraph*.50}%
+\contentsline {paragraph}{Tại sao CMO vẫn favors minority dù $\lambda $ ngẫu nhiên?}{19}{paragraph*.51}%
+\contentsline {paragraph}{Hiệu ứng regularization của nhãn mềm.}{19}{paragraph*.52}%
+\contentsline {paragraph}{Cách sử dụng trong nghiên cứu và kết hợp với Balanced Softmax.}{19}{paragraph*.53}%
+\contentsline {paragraph}{Ưu và nhược điểm.}{19}{paragraph*.54}%
+\contentsline {subsection}{\numberline {3.2.6}Meta-learning --- Prototypical Network (trục few-shot)}{19}{subsection.3.2.6}%
+\contentsline {paragraph}{Động lực: một góc nhìn khác về long-tail.}{19}{paragraph*.55}%
+\contentsline {paragraph}{Công thức.}{20}{paragraph*.56}%
+\contentsline {paragraph}{Nền tảng lý thuyết: tại sao Euclidean distance và prototype mean?}{20}{paragraph*.57}%
+\contentsline {paragraph}{Đánh giá $100$-way và hệ quy chiếu phù hợp.}{20}{paragraph*.58}%
+\contentsline {paragraph}{Ưu và nhược điểm.}{20}{paragraph*.59}%
+\contentsline {section}{\numberline {3.3}Track 2 --- Tái dùng checkpoint, không huấn luyện lại}{20}{section.3.3}%
+\contentsline {paragraph}{Ensemble và Test-Time Augmentation (TTA).}{21}{paragraph*.60}%
+\contentsline {paragraph}{Tier-fusion.}{21}{paragraph*.61}%
+\contentsline {paragraph}{$\tau $-normalization.}{21}{paragraph*.63}%
+\contentsline {paragraph}{CLIP fusion.}{22}{paragraph*.65}%
+\contentsline {section}{\numberline {3.4}Track 3 --- Thích nghi mô hình nền tảng đóng băng}{23}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}CLIP zero-shot và prototype giàu bằng LLM (nguồn: ngôn ngữ)}{23}{subsection.3.4.1}%
+\contentsline {paragraph}{CLIP zero-shot.}{23}{paragraph*.68}%
+\contentsline {paragraph}{Prototype giàu bằng LLM (CuPL).}{24}{paragraph*.69}%
+\contentsline {subsection}{\numberline {3.4.2}Tip-Adapter và Tip-Adapter-F (nguồn: truy hồi)}{24}{subsection.3.4.2}%
+\contentsline {paragraph}{Trực giác.}{24}{paragraph*.70}%
+\contentsline {paragraph}{Công thức.}{24}{paragraph*.71}%
+\contentsline {paragraph}{Balanced cache --- đóng góp của nhóm.}{24}{paragraph*.72}%
+\contentsline {paragraph}{Tip-Adapter-F.}{25}{paragraph*.74}%
+\contentsline {subsection}{\numberline {3.4.3}LIFT --- thích nghi nhẹ với khởi tạo ngữ nghĩa (nguồn: vision-language)}{25}{subsection.3.4.3}%
+\contentsline {paragraph}{Động lực.}{25}{paragraph*.75}%
+\contentsline {subsection}{\numberline {3.4.4}DINOv2-LIFT --- mô hình nền tảng thị giác thứ hai (nguồn: thị giác)}{26}{subsection.3.4.4}%
+\contentsline {paragraph}{Động lực.}{26}{paragraph*.77}%
+\contentsline {subsection}{\numberline {3.4.5}Sinh đặc trưng bằng diffusion và feature mixup (nguồn: sinh dữ liệu / augment)}{26}{subsection.3.4.5}%
+\contentsline {paragraph}{Feature diffusion (LDMLR-style).}{26}{paragraph*.78}%
+\contentsline {paragraph}{Feature mixup (CMO ở mức feature).}{26}{paragraph*.79}%
+\contentsline {subsection}{\numberline {3.4.6}Generalized Logit Adjustment (GLA) --- đo công bằng}{27}{subsection.3.4.6}%
+\contentsline {paragraph}{Động lực.}{27}{paragraph*.81}%
+\contentsline {paragraph}{Công thức GLA gốc.}{27}{paragraph*.82}%
+\contentsline {paragraph}{Biến thể nhóm sử dụng.}{27}{paragraph*.83}%
+\contentsline {subsection}{\numberline {3.4.7}Fusion nhận-biết-đuôi (kiểm bù trừ)}{27}{subsection.3.4.7}%
+\contentsline {paragraph}{Động lực.}{27}{paragraph*.84}%
+\contentsline {paragraph}{Hai biến thể.}{27}{paragraph*.85}%
+\contentsline {section}{\numberline {3.5}Pipeline đề xuất của nhóm}{28}{section.3.5}%
+\contentsline {chapter}{\numberline {4}Các chiến lược đánh giá và độ đo áp dụng}{29}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Chiến lược chọn mô hình và giao thức đánh giá}{29}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Tách validation, không bao giờ đụng test}{29}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Hệ quả: validation thiếu lớp đuôi}{29}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Các độ đo đánh giá}{29}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Cấu hình thực nghiệm}{30}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Môi trường}{30}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Siêu tham số huấn luyện}{30}{subsection.4.3.2}%
+\contentsline {section}{\numberline {4.4}Các mốc đối chứng (baselines)}{30}{section.4.4}%
+\contentsline {chapter}{\numberline {5}Huấn luyện và đánh giá}{31}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Kết quả định lượng}{31}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Track 1 --- Huấn luyện từ đầu}{31}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Track 2 --- Tái dùng checkpoint}{32}{subsection.5.1.2}%
+\contentsline {subsection}{\numberline {5.1.3}Track 3 --- Thích nghi mô hình nền tảng (kết quả chính)}{32}{subsection.5.1.3}%
+\contentsline {section}{\numberline {5.2}Nghiên cứu loại trừ (Ablation Study)}{32}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Ablation A --- đóng góp của pipeline so với backbone (DINOv2)}{32}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Ablation B --- độ sâu fine-tune CLIP: fine-tune nặng làm hại đuôi}{33}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Augment đặc trưng: sinh dữ liệu và mixup không giúp}{33}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Thảo luận}{33}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Các phát hiện chính (nhất quán trên cả hai dataset)}{33}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Điểm mạnh và hạn chế}{34}{subsection.5.3.2}%
+\contentsline {chapter}{\numberline {6}Kết luận và hướng phát triển}{35}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Kết luận}{35}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Những đóng góp chính của nhóm}{35}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Hạn chế}{35}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Hướng phát triển}{36}{section.6.4}%
+\contentsline {chapter}{Tài liệu tham khảo}{37}{section.6.4}%

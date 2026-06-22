@@ -1,0 +1,195 @@
+\relax 
+\providecommand\zref@newlabel[2]{}
+\providecommand\hyper@newdestlabel[2]{}
+\@writefile{toc}{\contentsline {chapter}{\numberline {3}Cơ sở lý thuyết}{14}{chapter.3}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:theory}{{3}{14}{Cơ sở lý thuyết}{chapter.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}Khung chung và ký hiệu}{14}{section.3.1}\protected@file@percent }
+\newlabel{sec:common}{{3.1}{14}{Khung chung và ký hiệu}{section.3.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Bộ trích đặc trưng (backbone).}{14}{paragraph*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Chọn mô hình theo balanced accuracy.}{14}{paragraph*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Không gian đánh giá và các nhóm lớp.}{14}{paragraph*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Giao thức báo cáo công bằng (Reporting Protocols).}{14}{paragraph*.27}\protected@file@percent }
+\citation{ren2020balanced}
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}Track 1 --- Huấn luyện từ đầu: can thiệp ở tầng nào giúp đuôi?}{15}{section.3.2}\protected@file@percent }
+\newlabel{sec:track1}{{3.2}{15}{Track 1 --- Huấn luyện từ đầu: can thiệp ở tầng nào giúp đuôi?}{section.3.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3.1}{\ignorespaces Các phương pháp Track 1 phân theo tầng can thiệp.}}{15}{table.caption.28}\protected@file@percent }
+\newlabel{tab:track1-map}{{3.1}{15}{Các phương pháp Track 1 phân theo tầng can thiệp}{table.caption.28}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.1}Baseline (Cross-Entropy)}{15}{subsection.3.2.1}\protected@file@percent }
+\newlabel{eq:ce}{{3.1}{15}{Baseline (Cross-Entropy)}{equation.3.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Tại sao Baseline thất bại trên long-tail?}{15}{paragraph*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Biểu hiện cụ thể: weight norm và logit thổi phồng.}{15}{paragraph*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Trực giác hình học.}{15}{paragraph*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hai hướng khắc phục.}{15}{paragraph*.32}\protected@file@percent }
+\citation{ren2020balanced}
+\citation{ren2020balanced}
+\citation{ren2020balanced}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.2}Balanced Softmax (can thiệp ở mất mát)}{16}{subsection.3.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{16}{paragraph*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Nền tảng xác suất.}{16}{paragraph*.34}\protected@file@percent }
+\newlabel{eq:bayes}{{3.2}{16}{Nền tảng xác suất}{equation.3.2}{}}
+\newlabel{eq:balsoftmax-paper}{{3.3}{16}{Nền tảng xác suất}{equation.3.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Công thức tương đương dùng trong thực hành.}{16}{paragraph*.35}\protected@file@percent }
+\newlabel{eq:balsoftmax-impl}{{3.4}{16}{Công thức tương đương dùng trong thực hành}{equation.3.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Trực giác hoạt động.}{16}{paragraph*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Nền tảng lý thuyết: generalization error bound.}{16}{paragraph*.37}\protected@file@percent }
+\newlabel{eq:optimal-margin}{{3.5}{16}{Nền tảng lý thuyết: generalization error bound}{equation.3.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Ưu và nhược điểm.}{16}{paragraph*.38}\protected@file@percent }
+\citation{kang2020decoupling}
+\citation{kang2020decoupling}
+\citation{khosla2020supcon}
+\citation{khosla2020supcon}
+\citation{khosla2020supcon}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.3}Decoupling / cRT (can thiệp ở bộ phân loại)}{17}{subsection.3.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{17}{paragraph*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Cơ chế: tại sao classifier bị lệch sau joint training?}{17}{paragraph*.40}\protected@file@percent }
+\newlabel{eq:weight-norm}{{3.6}{17}{Cơ chế: tại sao classifier bị lệch sau joint training?}{equation.3.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Thuật toán hai pha.}{17}{paragraph*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ưu và nhược điểm.}{17}{paragraph*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.4}Supervised Contrastive (SupCon, can thiệp ở biểu diễn)}{17}{subsection.3.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{17}{paragraph*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hai formulation và lý do chọn $\mathcal  {L}^{sup}_{out}$.}{17}{paragraph*.44}\protected@file@percent }
+\newlabel{eq:supcon-out}{{3.7}{17}{Hai formulation và lý do chọn $\mathcal {L}^{sup}_{out}$}{equation.3.7}{}}
+\newlabel{eq:supcon-in}{{3.8}{17}{Hai formulation và lý do chọn $\mathcal {L}^{sup}_{out}$}{equation.3.8}{}}
+\citation{zhang2018mixup}
+\citation{yun2019cutmix}
+\citation{park2022cmo}
+\citation{zhang2018mixup}
+\citation{yun2019cutmix}
+\citation{park2022cmo}
+\citation{park2022cmo}
+\@writefile{toc}{\contentsline {paragraph}{Cấu trúc two-stage và vai trò của projection head.}{18}{paragraph*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ưu và nhược điểm.}{18}{paragraph*.46}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tại sao SupCon cần đi kèm cRT? \textnormal  {(phân tích của nhóm)}}{18}{paragraph*.47}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.5}CMO / Mixup / CutMix (can thiệp ở dữ liệu)}{18}{subsection.3.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{18}{paragraph*.48}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Mixup và CutMix.}{18}{paragraph*.49}\protected@file@percent }
+\newlabel{eq:mixloss}{{3.9}{18}{Mixup và CutMix}{equation.3.9}{}}
+\citation{park2022cmo}
+\citation{park2022cmo}
+\citation{snell2017protonet}
+\@writefile{toc}{\contentsline {paragraph}{CMO: bất đối xứng phân phối là điểm mấu chốt.}{19}{paragraph*.50}\protected@file@percent }
+\newlabel{eq:cmo-q}{{3.10}{19}{CMO: bất đối xứng phân phối là điểm mấu chốt}{equation.3.10}{}}
+\newlabel{eq:cmo-mix}{{3.11}{19}{CMO: bất đối xứng phân phối là điểm mấu chốt}{equation.3.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{Tại sao CMO vẫn favors minority dù $\lambda $ ngẫu nhiên?}{19}{paragraph*.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hiệu ứng regularization của nhãn mềm.}{19}{paragraph*.52}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Cách sử dụng trong nghiên cứu và kết hợp với Balanced Softmax.}{19}{paragraph*.53}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ưu và nhược điểm.}{19}{paragraph*.54}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.6}Meta-learning --- Prototypical Network (trục few-shot)}{19}{subsection.3.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực: một góc nhìn khác về long-tail.}{19}{paragraph*.55}\protected@file@percent }
+\citation{snell2017protonet}
+\citation{snell2017protonet}
+\@writefile{toc}{\contentsline {paragraph}{Công thức.}{20}{paragraph*.56}\protected@file@percent }
+\newlabel{eq:prototype}{{3.12}{20}{Công thức}{equation.3.12}{}}
+\newlabel{eq:proto-classify}{{3.13}{20}{Công thức}{equation.3.13}{}}
+\@writefile{toc}{\contentsline {paragraph}{Nền tảng lý thuyết: tại sao Euclidean distance và prototype mean?}{20}{paragraph*.57}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Đánh giá $100$-way và hệ quy chiếu phù hợp.}{20}{paragraph*.58}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ưu và nhược điểm.}{20}{paragraph*.59}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}Track 2 --- Tái dùng checkpoint, không huấn luyện lại}{20}{section.3.3}\protected@file@percent }
+\newlabel{sec:track2}{{3.3}{20}{Track 2 --- Tái dùng checkpoint, không huấn luyện lại}{section.3.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Ensemble và Test-Time Augmentation (TTA).}{21}{paragraph*.60}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier-fusion.}{21}{paragraph*.61}\protected@file@percent }
+\newlabel{eq:tier-fusion}{{3.14}{21}{Tier-fusion}{equation.3.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.1}{\ignorespaces Minh họa định tính xu hướng của hai loại đầu phân loại theo nhóm lớp (giá trị trên trục tung là ví dụ minh họa, không phải số liệu thực nghiệm). Đầu tham số suy giảm mạnh ở vùng đuôi do thiếu dữ liệu huấn luyện, trong khi đầu prototype dựa trên NCM duy trì độ ổn định cao hơn. Tier-fusion khai thác bù đắp này bằng cách tăng dần tỉ trọng prototype từ many-shot sang few-shot.}}{21}{figure.caption.62}\protected@file@percent }
+\newlabel{fig:tier-fusion-intuition}{{3.1}{21}{Minh họa định tính xu hướng của hai loại đầu phân loại theo nhóm lớp (giá trị trên trục tung là ví dụ minh họa, không phải số liệu thực nghiệm). Đầu tham số suy giảm mạnh ở vùng đuôi do thiếu dữ liệu huấn luyện, trong khi đầu prototype dựa trên NCM duy trì độ ổn định cao hơn. Tier-fusion khai thác bù đắp này bằng cách tăng dần tỉ trọng prototype từ many-shot sang few-shot}{figure.caption.62}{}}
+\@writefile{toc}{\contentsline {paragraph}{$\tau $-normalization.}{21}{paragraph*.63}\protected@file@percent }
+\newlabel{eq:tau-norm-t2}{{3.15}{21}{$\tau $-normalization}{equation.3.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.2}{\ignorespaces Hệ quả hình học của $\tau $-normalization, minh họa trường hợp 2 lớp trong không gian 2 chiều (minh họa định tính; trong thực tế là 100 lớp/200 lớp). Ranh giới quyết định là bisector của hai vector trọng số. Trước khi áp dụng (a), $\lVert w_{\text  {head}} \rVert \gg \lVert w_{\text  {tail}} \rVert $ khiến vùng quyết định của head lấn át tail. Sau khi áp dụng (b) với $\tau = 0.5$, head bị rút ngắn nhiều hơn tail, đẩy ranh giới về phía cân bằng hơn giữa hai lớp.}}{22}{figure.caption.64}\protected@file@percent }
+\newlabel{fig:tau-norm-geometry}{{3.2}{22}{Hệ quả hình học của $\tau $-normalization, minh họa trường hợp 2 lớp trong không gian 2 chiều (minh họa định tính; trong thực tế là 100 lớp/200 lớp). Ranh giới quyết định là bisector của hai vector trọng số. Trước khi áp dụng (a), $\lVert w_{\text {head}} \rVert \gg \lVert w_{\text {tail}} \rVert $ khiến vùng quyết định của head lấn át tail. Sau khi áp dụng (b) với $\tau = 0.5$, head bị rút ngắn nhiều hơn tail, đẩy ranh giới về phía cân bằng hơn giữa hai lớp}{figure.caption.64}{}}
+\@writefile{toc}{\contentsline {paragraph}{CLIP fusion.}{22}{paragraph*.65}\protected@file@percent }
+\newlabel{eq:clip-fusion}{{3.16}{22}{CLIP fusion}{equation.3.16}{}}
+\citation{radford2021clip}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.3}{\ignorespaces Bốn thử nghiệm inference-time độc lập trong Track~2. Mỗi ô là một thử nghiệm chạy riêng trên cùng checkpoint từ Track~1; không có kỹ thuật nào là tiền đề bắt buộc của kỹ thuật khác. (A)~Ensemble + TTA trung bình xác suất của nhiều mô hình. (B)~Tier-Fusion trộn đầu tham số và đầu prototype theo nhóm-shot. (C)~$\tau $-Normalization hiệu chỉnh trọng số classifier trong weight space. (D)~CLIP Fusion tích hợp zero-shot prior từ mô hình ngôn ngữ-thị giác.}}{23}{figure.caption.66}\protected@file@percent }
+\newlabel{fig:track2-methods}{{3.3}{23}{Bốn thử nghiệm inference-time độc lập trong Track~2. Mỗi ô là một thử nghiệm chạy riêng trên cùng checkpoint từ Track~1; không có kỹ thuật nào là tiền đề bắt buộc của kỹ thuật khác. (A)~Ensemble + TTA trung bình xác suất của nhiều mô hình. (B)~Tier-Fusion trộn đầu tham số và đầu prototype theo nhóm-shot. (C)~$\tau $-Normalization hiệu chỉnh trọng số classifier trong weight space. (D)~CLIP Fusion tích hợp zero-shot prior từ mô hình ngôn ngữ-thị giác}{figure.caption.66}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.4}Track 3 --- Thích nghi mô hình nền tảng đóng băng}{23}{section.3.4}\protected@file@percent }
+\newlabel{sec:track3}{{3.4}{23}{Track 3 --- Thích nghi mô hình nền tảng đóng băng}{section.3.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.4}{\ignorespaces Pipeline chung của Track 3: đóng băng backbone, trích và cache đặc trưng một lần, rồi chỉ huấn luyện một module nhẹ ($<$1\% tham số) bằng loss nhận-biết-đuôi.}}{23}{figure.caption.67}\protected@file@percent }
+\newlabel{fig:fm-pipeline}{{3.4}{23}{Pipeline chung của Track 3: đóng băng backbone, trích và cache đặc trưng một lần, rồi chỉ huấn luyện một module nhẹ ($<$1\% tham số) bằng loss nhận-biết-đuôi}{figure.caption.67}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.1}CLIP zero-shot và prototype giàu bằng LLM (nguồn: ngôn ngữ)}{23}{subsection.3.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{CLIP zero-shot.}{23}{paragraph*.68}\protected@file@percent }
+\citation{pratt2023cupl}
+\citation{zhang2022tip}
+\citation{zhang2022tip}
+\@writefile{toc}{\contentsline {paragraph}{Prototype giàu bằng LLM (CuPL).}{24}{paragraph*.69}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.2}Tip-Adapter và Tip-Adapter-F (nguồn: truy hồi)}{24}{subsection.3.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Trực giác.}{24}{paragraph*.70}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Công thức.}{24}{paragraph*.71}\protected@file@percent }
+\newlabel{eq:tip}{{3.17}{24}{Công thức}{equation.3.17}{}}
+\@writefile{toc}{\contentsline {paragraph}{Balanced cache --- đóng góp của nhóm.}{24}{paragraph*.72}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.5}{\ignorespaces Cơ chế hoạt động của Tip-Adapter}}{24}{figure.caption.73}\protected@file@percent }
+\newlabel{fig:tip-adapter}{{3.5}{24}{Cơ chế hoạt động của Tip-Adapter}{figure.caption.73}{}}
+\citation{shi2024lift}
+\citation{oquab2023dinov2}
+\@writefile{toc}{\contentsline {paragraph}{Tip-Adapter-F.}{25}{paragraph*.74}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.3}LIFT --- thích nghi nhẹ với khởi tạo ngữ nghĩa (nguồn: vision-language)}{25}{subsection.3.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{25}{paragraph*.75}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces Kiến trúc LIFT: residual adapter có cổng ($g{=}0$ khởi tạo $\to $ bắt đầu từ zero-shot) $+$ cosine head khởi tạo từ feature văn bản, huấn luyện bằng Balanced Softmax. Backbone đóng băng.}}{25}{figure.caption.76}\protected@file@percent }
+\newlabel{fig:lift-arch}{{3.6}{25}{Kiến trúc LIFT: residual adapter có cổng ($g{=}0$ khởi tạo $\to $ bắt đầu từ zero-shot) $+$ cosine head khởi tạo từ feature văn bản, huấn luyện bằng Balanced Softmax. Backbone đóng băng}{figure.caption.76}{}}
+\citation{han2024ldmlr}
+\citation{zhu2023gla}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.4}DINOv2-LIFT --- mô hình nền tảng thị giác thứ hai (nguồn: thị giác)}{26}{subsection.3.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{26}{paragraph*.77}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.5}Sinh đặc trưng bằng diffusion và feature mixup (nguồn: sinh dữ liệu / augment)}{26}{subsection.3.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Feature diffusion (LDMLR-style).}{26}{paragraph*.78}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Feature mixup (CMO ở mức feature).}{26}{paragraph*.79}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.7}{\ignorespaces Trực quan hoá quá trình tăng cường ở mức đặc trưng (Feature-level augmentation).}}{26}{figure.caption.80}\protected@file@percent }
+\newlabel{fig:feature-synthesis}{{3.7}{26}{Trực quan hoá quá trình tăng cường ở mức đặc trưng (Feature-level augmentation)}{figure.caption.80}{}}
+\citation{caruana2004ensemble}
+\citation{wortsman2022soups}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.6}Generalized Logit Adjustment (GLA) --- đo công bằng}{27}{subsection.3.4.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{27}{paragraph*.81}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Công thức GLA gốc.}{27}{paragraph*.82}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Biến thể nhóm sử dụng.}{27}{paragraph*.83}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.7}Fusion nhận-biết-đuôi (kiểm bù trừ)}{27}{subsection.3.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Động lực.}{27}{paragraph*.84}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hai biến thể.}{27}{paragraph*.85}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.8}{\ignorespaces Cơ chế hoạt động của Fusion nhận-biết-đuôi.}}{27}{figure.caption.86}\protected@file@percent }
+\newlabel{fig:tail-aware-fusion}{{3.8}{27}{Cơ chế hoạt động của Fusion nhận-biết-đuôi}{figure.caption.86}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.5}Pipeline đề xuất của nhóm}{28}{section.3.5}\protected@file@percent }
+\newlabel{sec:proposed}{{3.5}{28}{Pipeline đề xuất của nhóm}{section.3.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3.2}{\ignorespaces Tái dùng có hệ thống các thành phần xuyên suốt bốn giai đoạn.}}{28}{table.caption.87}\protected@file@percent }
+\newlabel{tab:reuse}{{3.2}{28}{Tái dùng có hệ thống các thành phần xuyên suốt bốn giai đoạn}{table.caption.87}{}}
+\@setckpt{chapters/chap3}{
+\setcounter{page}{29}
+\setcounter{equation}{19}
+\setcounter{enumi}{3}
+\setcounter{enumii}{0}
+\setcounter{enumiii}{0}
+\setcounter{enumiv}{0}
+\setcounter{footnote}{1}
+\setcounter{mpfootnote}{0}
+\setcounter{part}{0}
+\setcounter{chapter}{3}
+\setcounter{section}{5}
+\setcounter{subsection}{0}
+\setcounter{subsubsection}{0}
+\setcounter{paragraph}{0}
+\setcounter{subparagraph}{0}
+\setcounter{figure}{8}
+\setcounter{table}{2}
+\setcounter{lstnumber}{1}
+\setcounter{float@type}{16}
+\setcounter{algorithm}{0}
+\setcounter{ALC@unique}{0}
+\setcounter{ALC@line}{0}
+\setcounter{ALC@rem}{0}
+\setcounter{ALC@depth}{0}
+\setcounter{mdf@globalstyle@cnt}{0}
+\setcounter{mdfcountframes}{0}
+\setcounter{mdf@env@i}{0}
+\setcounter{mdf@env@ii}{0}
+\setcounter{mdf@zref@counter}{0}
+\setcounter{parentequation}{0}
+\setcounter{caption@flags}{2}
+\setcounter{continuedfloat}{0}
+\setcounter{subfigure}{0}
+\setcounter{subtable}{0}
+\setcounter{section@level}{0}
+\setcounter{Item}{5}
+\setcounter{Hfootnote}{1}
+\setcounter{bookmark@seq@number}{36}
+\setcounter{lastpagecount}{0}
+\setcounter{nlinenum}{0}
+\setcounter{lstlisting}{0}
+}

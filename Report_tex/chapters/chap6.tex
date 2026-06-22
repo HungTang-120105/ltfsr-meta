@@ -5,14 +5,17 @@
 
 Báo cáo nghiên cứu bài toán nhận dạng ảnh trên dữ liệu đuôi-dài, nơi một số ít lớp phổ biến áp đảo
 rất nhiều lớp hiếm (đuôi chỉ 5 ảnh/lớp), theo một mạch tiếp cận có cấu trúc: \emph{đo cho đúng
-$\rightarrow$ sửa bộ phân loại $\rightarrow$ mượn tri thức ngoài}. Trên hai bộ dữ liệu khác biệt cả
-về quy mô lẫn miền --- CIFAR-100-LT (IF$=$100) và CUB-200-LT (fine-grained, IF$=$10) --- nhóm rút ra
-một kết luận nhất quán: với đuôi ít ảnh, chìa khoá \emph{không} nằm ở việc huấn luyện một mạng lớn
-hơn từ đầu, mà ở việc \textbf{mượn và thích nghi nhẹ một mô hình nền tảng đóng băng bằng loss
-nhận-biết-đuôi}. Trong khi track from-scratch chỉ chạm trần khoảng $0.47$ balanced accuracy (CIFAR)
-và $0.20$--$0.27$ (CUB), track nền tảng đạt tới $\mathbf{0.82}$ / $\mathbf{0.85}$. Xét riêng các
-nguồn tri thức ngoài, \textbf{mô hình nền tảng thị giác thứ hai (DINOv2) mang lại lợi ích lớn nhất};
-ngôn ngữ (LLM) giúp được ít, còn sinh dữ liệu và mixup gần như không giúp.
+$\rightarrow$ sửa bộ phân loại $\rightarrow$ mượn tri thức ngoài}. Mỗi track được đối chiếu \emph{song
+song} trên hai bộ dữ liệu khác biệt cả về quy mô lẫn miền --- CIFAR-100-LT (IF$=$100) và CUB-200-LT
+(fine-grained, IF$=$10) --- và cho ra một kết luận nhất quán: với đuôi ít ảnh, chìa khoá \emph{không}
+nằm ở việc huấn luyện một mạng lớn hơn từ đầu, mà ở việc \textbf{mượn và thích nghi nhẹ một mô hình
+nền tảng đóng băng bằng loss nhận-biết-đuôi}. Trong khi track from-scratch chỉ chạm trần khoảng
+$0.47$ balanced accuracy (CIFAR) và $0.20$--$0.28$ (CUB), track nền tảng đạt tới $\mathbf{0.82}$ /
+$\mathbf{0.85}$. Xét riêng các nguồn tri thức ngoài, \textbf{mô hình nền tảng thị giác thứ hai
+(DINOv2) mang lại lợi ích lớn nhất}; ngôn ngữ (LLM) giúp được ít, còn sinh dữ liệu và mixup gần như
+không giúp. Việc so sánh hai bộ còn hé lộ một sắc thái trung thực: ngay cả CMO --- phương pháp
+from-scratch mạnh nhất trên CIFAR --- cũng \emph{không} dẫn đầu trên miền fine-grained CUB, cho thấy
+ưu thế của một can thiệp ở mức dữ liệu là tuỳ miền, càng củng cố việc cần mượn tri thức ngoài.
 
 \section{Những đóng góp chính của nhóm}
 
@@ -21,7 +24,8 @@ ngôn ngữ (LLM) giúp được ít, còn sinh dữ liệu và mixup gần như
         với giao thức chọn-mô-hình-trên-validation nghiêm ngặt và bộ độ đo tail-aware (balanced
         accuracy, few-shot accuracy, G-mean).
   \item \textbf{Triển khai và đối chứng} đầy đủ ba lớp phương pháp (huấn luyện từ đầu, tái dùng
-        checkpoint, thích nghi mô hình nền tảng đóng băng) trên cùng một thước đo.
+        checkpoint, thích nghi mô hình nền tảng đóng băng) trên cùng một thước đo, với mỗi track được
+        so sánh trực tiếp trên \emph{cả hai} bộ dữ liệu.
   \item \textbf{Thực hiện} một nghiên cứu so sánh có hệ thống ba nguồn tri thức ngoài (ngôn ngữ /
         thị giác thứ hai / sinh dữ liệu) trên cùng một đuôi, kèm công cụ đo công bằng (GLA) và phép
         kiểm bù trừ (fusion nhận-biết-đuôi), có đối chiếu với mốc from-scratch.
@@ -40,19 +44,20 @@ Kaggle, nhóm chỉ dùng CLIP ViT-B/32 (cấu hình nhẹ nhất), nên track n
 thị giác. Tiếp đến là vấn đề validation thiếu lớp đuôi: vì lớp tail chỉ có 5 ảnh và được giữ nguyên
 cho train, việc tinh chỉnh trên validation không có tín hiệu trực tiếp cho nhóm few, buộc trọng số
 nhóm này phải lấy theo medium. Ngoài ra, IF của CUB bị giới hạn ở mức $\le$50 do pool chỉ khoảng 50
-ảnh/lớp, nên không gắt bằng CIFAR và được trình bày như một miền fine-grained. Cuối cùng là hai
-caveat về breakdown đã nêu trong phần thảo luận (Chương~\ref{chap:results}) liên quan tới bộ
-checkpoint Phase 0 và ngưỡng nhóm-shot của CUB from-scratch; cả hai chỉ ảnh hưởng tới breakdown chứ
-không ảnh hưởng balanced accuracy.
+ảnh/lớp, nên không gắt bằng CIFAR và được trình bày như một miền fine-grained. Cuối cùng là một
+caveat về breakdown đã nêu trong phần thảo luận (Chương~\ref{chap:results}): nhóm from-scratch trên
+CUB được chấm khi ngưỡng nhóm-shot còn ở mặc định nên cách chia many/medium/few của riêng nhóm này
+không hợp lệ; điều này chỉ ảnh hưởng tới breakdown chứ không ảnh hưởng balanced accuracy hay các kết
+luận.
 
 \section{Hướng phát triển}
 
 Từ những hạn chế trên, một số hướng mở rộng tự nhiên có thể kể tới. Hướng đầu tiên là thử các
 backbone nền tảng lớn hơn (CLIP ViT-L/14, DINOv2 ViT-L/14) để kiểm tra xem kết luận ``DINOv2 $>$
-CLIP'' có còn giữ nguyên khi tăng dung lượng mô hình hay không. Hướng thứ hai là chạy lại một đối
-chứng from-scratch \emph{nhất quán hoàn toàn} --- Phase 0 trên đúng checkpoint
-\texttt{pretrained=False}, và from-scratch CUB với ngưỡng nhóm-shot $20/10$ --- nhằm thu được một
-bảng ``sạch'' tuyệt đối. Bên cạnh đó, có thể nghiên cứu cách \emph{ước lượng phân phối đuôi} (hoặc
+CLIP'' có còn giữ nguyên khi tăng dung lượng mô hình hay không. Hướng thứ hai là chấm lại nhóm
+from-scratch trên CUB với đúng ngưỡng nhóm-shot $20/10$ để có một bảng breakdown ``sạch'' tuyệt đối
+(track tái dùng và track nền tảng đã được trình bày nhất quán trên cùng các checkpoint từ-đầu). Bên
+cạnh đó, có thể nghiên cứu cách \emph{ước lượng phân phối đuôi} (hoặc
 dựng một validation tổng hợp cho đuôi) để chọn siêu tham số fusion cho nhóm few mà không phải buộc
 theo medium. Sau cùng, nhóm muốn khảo sát các cơ chế bù trừ sâu hơn giữa các nguồn tri thức (ví dụ
 kết hợp ở mức feature thay vì mức xác suất) và mở rộng nghiên cứu sang các dataset long-tail quy mô

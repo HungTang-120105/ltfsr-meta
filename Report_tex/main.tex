@@ -41,19 +41,20 @@
 \usepackage{caption}  % Tùy chỉnh caption bảng
 \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
 
+\usepackage{enumitem} % Tuỳ chỉnh danh sách (vd enumerate[label=...])
 \usepackage{tikz} % Vẽ sơ đồ pipeline / kiến trúc
 \usetikzlibrary{arrows.meta, positioning, fit, backgrounds, calc, shapes.geometric}
 \usepackage{pgfplots} % Vẽ biểu đồ so sánh
 \pgfplotsset{compat=1.16}
 
 \setlength{\parindent}{0pt}
-
+\usepackage{tabularx}
 % Cấu hình fancyhdr
 \pagestyle{fancy}
 \fancyhf{} % Xóa tất cả các trường header và footer hiện tại
 
 % Thiết lập header mới
-\lhead{\textbf{IT3190 - Mã lớp - Nhóm  - }}
+\lhead{\textbf{IT3190 - 167832 - Nhóm 12}}
 \renewcommand{\headrulewidth}{0.4pt}
 
 \newcommand{\algorithmautorefname}{Thuật toán}
@@ -79,7 +80,7 @@
 \include{chapters/chap4}
 \include{chapters/chap5}
 \include{chapters/chap6}
-\include{appendix}
+% \include{appendix}
 \include{references}
 
 \label{LastPage} % Đặt nhãn cho trang cuối cùng

@@ -82,20 +82,20 @@ phương pháp được sắp xếp theo tầng can thiệp --- mất mát (Bala
 (ProtoNet). Đây vừa là \emph{trần} của việc học từ đầu, vừa đóng vai trò mốc đối chứng cho các track
 sau.
 
-\textbf{Track 2 --- Tái dùng checkpoint, không huấn luyện lại} (Phase 0) khai thác thêm điểm số từ
+\textbf{Track 2 --- Tái dùng checkpoint, không huấn luyện lại} khai thác thêm điểm số từ
 các checkpoint đã có mà \emph{không huấn luyện thêm}, thông qua ensemble (kèm TTA), tier-fusion (đầu
 tham số cho head, prototype cho tail), $\tau$-normalization (chuẩn hoá norm trọng số) và CLIP fusion
 (trộn mô hình thị giác với CLIP zero-shot).
 
-\textbf{Track 3 --- Thích nghi mô hình nền tảng đóng băng} (Phase 2 và Phase 3) là phần trọng tâm.
+\textbf{Track 3 --- Thích nghi mô hình nền tảng đóng băng} là phần trọng tâm.
 Thay vì học từ đầu, nhóm \emph{đóng băng} một mô hình nền tảng (CLIP, DINOv2) và chỉ học vài tham số
-nhỏ trên đặc trưng đã được trích sẵn và lưu cache. Phase 2 tập trung vào việc thích nghi CLIP
-(Tip-Adapter, LIFT), còn Phase 3 nâng vấn đề lên thành một câu hỏi nghiên cứu về các \emph{nguồn tri
+nhỏ trên đặc trưng đã được trích sẵn và lưu cache. Trước hết tập trung vào việc thích nghi CLIP
+(Tip-Adapter, LIFT), còn sau đó nâng vấn đề lên thành một câu hỏi nghiên cứu về các \emph{nguồn tri
 thức bên ngoài}.
 
 \subsection{Câu hỏi nghiên cứu trọng tâm}
 
-Đóng góp chính của đề tài nằm ở Phase 3 và được phát biểu thành một câu hỏi nghiên cứu rõ ràng:
+Một trong những đóng góp chính của đề tài nằm ở Track 3 và được phát biểu thành một câu hỏi nghiên cứu rõ ràng:
 
 \begin{mdframed}
 \textit{Với lớp đuôi chỉ có vài ảnh, loại tri thức bên ngoài nào giúp nhiều nhất --- \textbf{ngôn

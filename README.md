@@ -5,7 +5,13 @@ classes have many images, many "tail" classes have very few), studied on **two
 datasets**: **CIFAR-100-LT** (IF=100) and **CUB-200-LT** (fine-grained, IF=10).
 
 The study runs in **three tracks** and asks, for the few-image tail, *where should the
-knowledge come from?* Full results & analysis: **[`REPORT.md`](REPORT.md)**.
+knowledge come from?*
+
+- **Full results & analysis (markdown):** **[`REPORT.md`](REPORT.md)**.
+- **Formal report (LaTeX → PDF, in Vietnamese, course IT3190):** **[`Report_tex/`](Report_tex/)**
+  — compile `Report_tex/main.tex` (e.g. `pdflatex main.tex` ×2, or `latexmk -pdf main.tex`) to
+  produce `main.pdf`. The report covers the problem, data analysis (EDA), theory of every method,
+  evaluation protocol/metrics, results, ablations and conclusions.
 
 1. **From-scratch** (Track 1) — ResNet-18 with a tail-aware fix at each level:
    `baseline` (CE) → `balanced_softmax` (loss) → `decoupling`/cRT (classifier) →
@@ -42,23 +48,34 @@ suite, so the comparison is fair and the code stays small.
 ```
 ltfsr-meta/
 ├── src/
-│   ├── datasets/        # cifar_lt loaders + class groups, episodic sampler
+│   ├── datasets/        # cifar_lt loaders + class groups, episodic sampler, augment
 │   ├── models/          # shared encoder, baseline, prototype, projection heads
-│   ├── trainers/        # one file per method + shared engine/classifier loops
-│   ├── evaluation/      # imbalanced metrics + all plots
+│   ├── trainers/        # one file per Track-1 method + shared engine/classifier loops
+│   ├── experts/         # Track-3 foundation-model experts: CLIP, Tip-Adapter, LIFT,
+│   │                    #   DINOv2, LLM prompts (CuPL), feature diffusion/mixup, GLA
+│   ├── evaluation/      # imbalanced metrics, ensemble/posthoc/fusion + all plots
 │   └── utils/           # seeding, experiment bookkeeping
 ├── data/
 │   ├── prepare_datasets.py    # build CIFAR-100-LT (ImageFolder layout)
+│   ├── prepare_cub_lt.py      # build CUB-200-LT (fine-grained, IF=10)
 │   └── validate_cifar_lt.py   # sanity-check the prepared dataset
-├── docs/                # 01_baseline.md … 05_meta.md (the algorithms)
+├── docs/                # 01_baseline … 07_clip_adaptation (per-method algorithms)
+├── guides/              # 00_muc_tieu … 05_new_dataset (goals, how-to-run, per-phase)
 ├── notebooks/
-│   ├── run_experiment.ipynb   # run ONE method (set METHOD, Run All)
-│   └── run_all_methods.ipynb  # run ALL methods + comparison plots in one pass
-├── outputs/             # per-run results (gitignored)
+│   ├── run_pipeline.ipynb            # all 4 phases in one file (toggles RUN_PHASE1/0/2/3)
+│   ├── run_experiment.ipynb          # run ONE method (set METHOD, Run All)
+│   ├── run_all_methods.ipynb         # run ALL Track-1 methods + comparison plots
+│   ├── phase0_reuse.ipynb            # reuse checkpoints: ensemble / fusion / τ-norm / CLIP
+│   ├── phase2_clip_adapt.ipynb       # adapt frozen CLIP: Tip-Adapter / LIFT
+│   ├── phase3_knowledge_sources.ipynb# research study: LLM vs DINOv2 vs diffusion + GLA + fusion
+│   └── visualize_cifar_lt.ipynb      # dataset EDA figures
+├── Report_tex/          # formal report (LaTeX): main.tex + chapters/ → main.pdf
+├── REPORT.md            # results & analysis (markdown deliverable)
+├── outputs/             # per-run results + result CSVs (cifar/, cub_200_2011/)
 └── requirements.txt
 ```
 
-## The dataset
+## The datasets
 
 `data/prepare_datasets.py` downloads CIFAR-100 via torchvision and exports a
 long-tail split as an `ImageFolder`:
@@ -66,11 +83,18 @@ long-tail split as an `ImageFolder`:
 ```
 CIFAR-100-LT/
 ├── class_counts.json          # train images kept per class (the LT profile)
+├── class_names.json           # class names in label order (for CLIP / LLM)
 ├── train/class_000 … class_099/
 └── test/class_000  … class_099/
 ```
 
-Head class ≈ 500 images, tail class ≈ 5 images (imbalance factor 100).
+Head class ≈ 500 images, tail class ≈ 5 images (imbalance factor 100); the test set is
+balanced at 100/class.
+
+`data/prepare_cub_lt.py` builds **CUB-200-LT** in the same layout — 200 bird species
+(fine-grained), head 50 / tail 5 (IF=10), balanced test 10/class. Any dataset that follows
+this `ImageFolder + class_counts.json + class_names.json` layout works with no code changes
+(see `guides/05_new_dataset.md`).
 
 ## Metrics (built for imbalance)
 
@@ -98,13 +122,16 @@ python data/prepare_datasets.py --dataset cifar100-lt --data_dir ./data --overwr
 # 2. Check it
 python data/validate_cifar_lt.py --data_dir ./data/CIFAR-100-LT
 
-# 3. Run an experiment — open the notebook and Run All
+# 3a. Run ONE method quickly — open the notebook and Run All
 jupyter notebook notebooks/run_experiment.ipynb
+
+# 3b. Or run the WHOLE study (all 4 phases) in one file
+jupyter notebook notebooks/run_pipeline.ipynb
 ```
 
 The notebook is the single entry point: set the config in the first cell, choose
-a method, and Run All. All training logic lives in `src/` — nothing is duplicated
-in the notebook.
+a method (or toggle the phases), and Run All. All training logic lives in `src/` —
+nothing is duplicated in the notebook.
 
 ## Run on Kaggle
 

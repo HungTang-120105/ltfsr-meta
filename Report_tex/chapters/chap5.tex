@@ -3,192 +3,175 @@
 
 Chương này trình bày quy trình huấn luyện thực tế, kết quả định lượng trên cả hai bộ dữ liệu, các
 nghiên cứu loại trừ (ablation), phân tích định tính và phần thảo luận. Mọi con số đều được lấy trực
-tiếp từ các tệp kết quả trong \texttt{outputs/cifar/*.csv} và \texttt{outputs/cub\_200\_2011/*.csv}.
+tiếp từ kết quả thực nghiệm trên hai bộ dữ liệu.
 
-\section{Quy trình huấn luyện theo bốn giai đoạn}
+% \section{Quy trình huấn luyện theo bốn giai đoạn}
 
-Bốn giai đoạn được chạy liên hoàn trong \texttt{run\_pipeline.ipynb} (mỗi phase là một hàm có phạm
-vi riêng, dùng chung cấu hình ở đầu file), theo thứ tự phụ thuộc minh hoạ ở Hình~\ref{fig:phase-flow}.
+% Bốn giai đoạn được thực hiện liên hoàn, dùng chung một cấu hình thống nhất, theo thứ tự phụ thuộc
+% minh hoạ ở Hình~\ref{fig:phase-flow}.
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-  font=\small,
-  ph/.style={rectangle, rounded corners, draw, thick, align=center, minimum height=1.0cm, text width=3.0cm},
-  arr/.style={-{Stealth[length=2.5mm]}, thick},
-]
-  \node[ph, fill=blue!8] (p1) {\textbf{Phase 1}\\Train từ đầu\\\scriptsize sinh checkpoint \texttt{cmo}};
-  \node[ph, fill=orange!12, below left=1.0cm and -0.5cm of p1] (p0) {\textbf{Phase 0}\\Tái dùng checkpoint};
-  \node[ph, fill=green!12, below right=1.0cm and -0.5cm of p1] (p3) {\textbf{Phase 3}\\Nghiên cứu nguồn\\tri thức (cần \texttt{cmo})};
-  \node[ph, fill=green!8, right=1.4cm of p1] (p2) {\textbf{Phase 2}\\Thích nghi CLIP\\\scriptsize (chỉ cần dataset)};
-  \draw[arr] (p1) -- (p0);
-  \draw[arr] (p1) -- (p3);
-  \node[above=0.2cm of p2, font=\scriptsize, text=green!40!black] {song song};
-\end{tikzpicture}
-\caption{Phụ thuộc giữa các giai đoạn. Phase 1 sinh checkpoint \texttt{cmo} làm đối chứng cho Phase
-0 và Phase 3; Phase 2 độc lập (chỉ cần dataset) nên chạy song song được.}
-\label{fig:phase-flow}
-\end{figure}
+% \begin{figure}[H]
+% \centering
+% \begin{tikzpicture}[
+%   font=\small,
+%   ph/.style={rectangle, rounded corners, draw, thick, align=center, minimum height=1.0cm, text width=3.0cm},
+%   arr/.style={-{Stealth[length=2.5mm]}, thick},
+% ]
+%   \node[ph, fill=blue!8] (p1) {\textbf{Phase 1}\\Train từ đầu\\\scriptsize sinh mô hình CMO};
+%   \node[ph, fill=orange!12, below left=1.0cm and -0.5cm of p1] (p0) {\textbf{Phase 0}\\Tái dùng checkpoint};
+%   \node[ph, fill=green!12, below right=1.0cm and -0.5cm of p1] (p3) {\textbf{Phase 3}\\Nghiên cứu nguồn\\tri thức (cần CMO)};
+%   \node[ph, fill=green!8, right=1.4cm of p1] (p2) {\textbf{Phase 2}\\Thích nghi CLIP\\\scriptsize (chỉ cần dataset)};
+%   \draw[arr] (p1) -- (p0);
+%   \draw[arr] (p1) -- (p3);
+%   \node[above=0.2cm of p2, font=\scriptsize, text=green!40!black] {song song};
+% \end{tikzpicture}
+% \caption{Phụ thuộc giữa các giai đoạn. Phase 1 sinh mô hình CMO làm đối chứng cho Phase 0 và Phase
+% 3; Phase 2 độc lập (chỉ cần dataset) nên chạy song song được.}
+% \label{fig:phase-flow}
+% \end{figure}
 
-Mỗi lần chạy ghi lại \texttt{config.json}, lịch sử theo epoch (\texttt{metrics.csv}), checkpoint tốt
-nhất (\texttt{best\_model.pt}) cùng các hình (confusion matrix, t-SNE) vào \texttt{outputs/<method>/};
-cuối cùng, \texttt{compare\_runs} dựng bảng so sánh được sắp theo balanced accuracy.
+% Mỗi lần chạy đều lưu lại cấu hình, lịch sử huấn luyện theo từng epoch, mô hình tốt nhất cùng các
+% hình minh hoạ (confusion matrix, t-SNE); cuối cùng, toàn bộ kết quả được tổng hợp thành bảng so sánh
+% sắp theo balanced accuracy.
 
-\section{Kết quả định lượng trên CIFAR-100-LT}
+\section{Kết quả định lượng}
 
-\subsection{Track 1 --- Leaderboard huấn luyện từ đầu}
+Để tiện theo dõi, kết quả được trình bày \emph{theo từng track}, và \textbf{mỗi bảng đối chiếu trực
+tiếp hai bộ dữ liệu} CIFAR-100-LT và CUB-200-LT cạnh nhau. Với mỗi phương pháp, nhóm báo cáo hai
+thước đo chính: balanced accuracy (bal-acc) và độ chính xác trên nhóm few-shot (đuôi).
 
-Bảng~\ref{tab:cifar-scratch} cho thấy một bức tranh khá rõ theo tầng can thiệp. Baseline đạt $0.401$
-balanced accuracy nhưng few-shot chỉ vỏn vẹn $0.079$ --- đuôi gần như chết. Can thiệp ở tầng
-\emph{mất mát} (balanced\_softmax) nâng few-shot lên $0.181$ (khoảng 2.3 lần), còn can thiệp đồng
-thời ở \emph{dữ liệu} và \emph{mất mát} (cmo) đạt cao nhất với balanced accuracy $0.468$ và few-shot
-$0.299$ (gần 4 lần baseline). Một điểm thú vị là cmo và balanced\_softmax chấp nhận \emph{hy sinh
-một chút head} (many giảm từ $0.707$ xuống $0.641$) để \emph{cứu lấy đuôi} --- đúng với bản chất
-đánh đổi của bài toán long-tail.
+\subsection{Track 1 --- Huấn luyện từ đầu}
+
+Bảng~\ref{tab:scratch} đối chiếu nhóm huấn luyện-từ-đầu trên cả hai bộ dữ liệu. Trên CIFAR, bức
+tranh rất rõ theo tầng can thiệp: Baseline chỉ đạt few-shot $0.079$ (đuôi gần như chết), can thiệp ở
+\emph{mất mát} (Balanced Softmax) nâng lên $0.181$, và can thiệp đồng thời ở \emph{dữ liệu} và
+\emph{mất mát} (CMO) đạt cao nhất ($0.468$ bal-acc, $0.299$ few-shot --- gần 4 lần Baseline). Trần
+của việc học-từ-đầu trên CIFAR vì thế chỉ vào khoảng $0.47$ bal-acc.
+
+Trên CUB (fine-grained) thì mọi phương pháp from-scratch đều \emph{sụp đổ} về mức $0.18$--$0.28$
+bal-acc, và đáng chú ý là \textbf{CMO không còn dẫn đầu} ($0.195$, thậm chí dưới cả Baseline
+$0.258$): cơ chế dán-mảnh thô của CMO không phù hợp với bài toán phân biệt loài chim ở những chi
+tiết tinh vi. Dù xếp hạng nội bộ có khác nhau, kết luận chung là như nhau --- học-từ-đầu chạm trần
+rất thấp, đặc biệt trên miền khó, nên việc \emph{mượn tri thức ngoài} là cần thiết.
 
 \begin{table}[H]
 \centering
-\caption{CIFAR-100-LT --- Track 1, huấn luyện từ đầu (\texttt{comparison\_train\_from\_scratch.csv}).
-Sắp theo balanced accuracy.}
-\label{tab:cifar-scratch}
+\caption{Track 1 --- huấn luyện từ đầu, đối chiếu hai bộ dữ liệu. Sắp theo bal-acc trên CIFAR.}
+\label{tab:scratch}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Phương pháp} & \textbf{bal-acc} & \textbf{many} & \textbf{medium} & \textbf{few} \\
+ & \multicolumn{2}{c}{\textbf{CIFAR-100-LT}} & \multicolumn{2}{c}{\textbf{CUB-200-LT}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+\textbf{Phương pháp} & bal-acc & few & bal-acc & few \\
 \midrule
-\textbf{cmo} & \textbf{0.468} & 0.641 & 0.441 & \textbf{0.299} \\
-balanced\_softmax & 0.441 & 0.681 & 0.424 & 0.181 \\
-decoupling & 0.407 & 0.706 & 0.375 & 0.094 \\
-baseline & 0.401 & 0.707 & 0.371 & 0.079 \\
-supcon & 0.367 & 0.668 & 0.361 & 0.021 \\
-meta & 0.351 & 0.558 & 0.390 & 0.064 \\
+\textbf{CMO} & \textbf{0.468} & \textbf{0.299} & 0.195 & 0.120 \\
+Balanced Softmax & 0.441 & 0.181 & 0.271 & 0.197 \\
+Decoupling (cRT) & 0.407 & 0.094 & 0.261 & 0.169 \\
+Baseline & 0.401 & 0.079 & 0.258 & 0.160 \\
+SupCon & 0.367 & 0.021 & 0.183 & 0.099 \\
+Meta (ProtoNet) & 0.351 & 0.064 & 0.276 & 0.198 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Như vậy trần của việc học-từ-đầu rơi vào khoảng $0.47$ balanced accuracy (tail $\approx 0.30$).
-SupCon kém kỳ vọng ở đuôi (few $0.021$) bởi với 5 ảnh/lớp, số cặp dương quá ít để hình thành cụm
-tương phản tốt cho tail; còn Meta (ProtoNet) yếu ở $100$-way như đã dự đoán, vì vốn được thiết kế
-cho few-way.
+SupCon kém kỳ vọng ở đuôi (CIFAR few $0.021$) vì với 5 ảnh/lớp, số cặp dương quá ít để hình thành
+cụm tương phản tốt; Meta (ProtoNet) yếu ở $100$-way như đã dự đoán. Cần lưu ý: nhóm from-scratch
+trên CUB được chấm khi ngưỡng nhóm-shot còn ở mặc định, nên \emph{cách chia many/medium/few không
+hợp lệ} (xem phần thảo luận); balanced accuracy không phụ thuộc cách chia nhóm nên vẫn dùng để so
+sánh được, còn cột few của CUB chỉ mang tính tham khảo.
 
 \subsection{Track 2 --- Tái dùng checkpoint}
 
-Bảng~\ref{tab:cifar-phase0} trình bày hiệu quả của các kỹ thuật reuse. CLIP fusion
-(\texttt{vlm\_fusion}) dẫn đầu ($0.681$) và vượt cả hai chuyên gia thành phần, cho thấy giá trị của
-tri thức ngôn ngữ ngay cả khi mới chỉ ``trộn''. Các kỹ thuật thuần-thị-giác (ensemble, tier\_fusion,
-$\tau$-norm) chỉ nâng nhẹ so với mô hình đơn và chủ yếu ở head; trong nhóm này, $\tau$-norm cải
-thiện đuôi rõ nhất ($0.364$).
+Bảng~\ref{tab:reuse} đối chiếu các kỹ thuật tái dùng (chạy trên chính các checkpoint từ-đầu, nên
+nhất quán với Track 1). Trên \emph{cả hai} bộ, VLM fusion --- trộn mô hình thị giác với CLIP
+zero-shot --- dẫn đầu ($0.671$ CIFAR / $0.483$ CUB) và vượt từng chuyên gia thành phần, cho thấy giá
+trị của tri thức ngôn ngữ ngay cả khi mới chỉ ``trộn''. Các kỹ thuật thuần-thị-giác (ensemble,
+tier-fusion, $\tau$-norm) chỉ cải thiện nhẹ và chủ yếu ở head. Riêng CLIP zero-shot (không huấn
+luyện gì) đã đạt $\approx 0.63$ / $0.46$, vượt mọi mô hình thị giác từ-đầu --- một tín hiệu sớm cho
+hướng tri thức ngoài ở Track 3.
 
 \begin{table}[H]
 \centering
-\caption{CIFAR-100-LT --- Track 2, tái dùng checkpoint (\texttt{comparison\_phase0.csv}).}
-\label{tab:cifar-phase0}
+\caption{Track 2 --- tái dùng checkpoint (trên checkpoint từ-đầu), đối chiếu hai bộ dữ liệu.}
+\label{tab:reuse}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Kỹ thuật} & \textbf{bal-acc} & \textbf{many} & \textbf{medium} & \textbf{few} \\
+ & \multicolumn{2}{c}{\textbf{CIFAR-100-LT}} & \multicolumn{2}{c}{\textbf{CUB-200-LT}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+\textbf{Kỹ thuật} & bal-acc & few & bal-acc & few \\
 \midrule
-\textbf{vlm\_fusion} (CLIP $+$ vision) & \textbf{0.681} & 0.810 & 0.645 & 0.571 \\
-clip\_only (zero-shot) & 0.627 & 0.638 & 0.605 & 0.638 \\
-tau\_norm & 0.543 & 0.720 & 0.521 & 0.364 \\
-ensemble\_tta & 0.494 & 0.772 & 0.493 & 0.172 \\
-tier\_fusion & 0.489 & 0.775 & 0.513 & 0.126 \\
+\textbf{VLM fusion} (CLIP $+$ vision) & \textbf{0.671} & 0.614 & \textbf{0.483} & 0.444 \\
+CLIP zero-shot & 0.627 & 0.638 & 0.460 & 0.445 \\
+$\tau$-norm & 0.449 & 0.313 & 0.195 & 0.162 \\
+Ensemble $+$ TTA & 0.448 & 0.149 & 0.289 & 0.198 \\
+Tier-fusion & 0.425 & 0.132 & 0.200 & 0.114 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Có một điểm về tính nhất quán cần nói rõ ở đây. Bộ checkpoint dùng cho Phase 0 cho số mô hình-đơn
-\emph{cao hơn} leaderboard from-scratch ở Bảng~\ref{tab:cifar-scratch} (ví dụ \texttt{cmo} đạt
-$0.514$ ở Phase 0 so với $0.468$ ở Track 1), nhiều khả năng do bộ này dùng \texttt{pretrained=True}.
-Vì vậy Bảng~\ref{tab:cifar-phase0} nên được đọc như phần \emph{minh hoạ các kỹ thuật reuse} chứ
-không trộn trực tiếp con số với Track 1 hay Track 3; đối chứng from-scratch chuẩn vẫn là Track 1 và
-Track 3.
+Vì bảng này dùng đúng các checkpoint từ-đầu (không phải bản tiền huấn luyện), các con số nằm nhất
+quán giữa Track 1 và Track 3: ví dụ CMO ở đây cho $\approx 0.46$ bal-acc trên CIFAR, khớp với cả
+leaderboard từ-đầu lẫn mốc đối chứng ở Track 3.
 
 \subsection{Track 3 --- Thích nghi mô hình nền tảng (kết quả chính)}
 
-Đây là bảng quan trọng nhất của báo cáo (Bảng~\ref{tab:cifar-foundation}). Track tri thức ngoài tạo
-ra một bước nhảy quyết định: từ trần from-scratch $0.47$ lên $\mathbf{0.82}$ balanced accuracy, với
-few-shot tăng từ $0.30$ lên $\mathbf{0.755}$. Mô hình nền tảng thị giác thứ hai
-(\texttt{dino\_lift}, $0.811$) vượt rõ LIFT-CLIP ($0.717$), còn fusion gộp các expert đạt cao nhất
-($0.823$) mà \emph{không tụt ở bất kỳ nhóm-shot nào}.
+Đây là phần quan trọng nhất (Bảng~\ref{tab:foundation}). Track tri thức ngoài tạo ra một bước nhảy
+quyết định trên \emph{cả hai} bộ: từ trần from-scratch $0.47$ lên $\mathbf{0.82}$ bal-acc trên
+CIFAR, và từ $0.20$--$0.28$ lên $\mathbf{0.85}$ trên CUB --- khoảng cách càng lớn ở miền khó hơn
+(CUB). Trên cả hai, mô hình nền tảng thị giác thứ hai (DINOv2-LIFT) là expert đơn mạnh nhất
+($0.811$ / $0.841$) và vượt rõ LIFT-CLIP ($0.718$ / $0.670$); fusion gộp các expert đạt cao nhất
+($0.823$ / $0.849$) mà không tụt ở bất kỳ nhóm-shot nào. DINOv2-LIFT thậm chí còn mạnh hơn trên CUB,
+phù hợp với việc DINOv2 (patch nhỏ $14$, tự giám sát) bắt chi tiết fine-grained rất tốt.
 
 \begin{table}[H]
 \centering
-\caption{CIFAR-100-LT --- Track 3, thích nghi mô hình nền tảng (\texttt{comparison\_phase3.csv} \&
-\texttt{comparison\_vlm\_phase2.csv}). Sắp theo balanced accuracy.}
-\label{tab:cifar-foundation}
+\caption{Track 3 --- thích nghi mô hình nền tảng, đối chiếu hai bộ dữ liệu. Sắp theo bal-acc trên CIFAR.}
+\label{tab:foundation}
 \begin{tabular}{llcccc}
 \toprule
-\textbf{Expert} & \textbf{Nguồn tri thức} & \textbf{bal-acc} & \textbf{many} & \textbf{medium} & \textbf{few} \\
+ & & \multicolumn{2}{c}{\textbf{CIFAR-100-LT}} & \multicolumn{2}{c}{\textbf{CUB-200-LT}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+\textbf{Expert} & \textbf{Nguồn} & bal-acc & few & bal-acc & few \\
 \midrule
-\textbf{fusion\_greedy} & gộp & \textbf{0.823} & 0.890 & 0.813 & \textbf{0.755} \\
-fusion\_tailaware & gộp & 0.820 & 0.893 & 0.803 & 0.753 \\
-\textbf{dino\_lift} & thị giác thứ hai & \textbf{0.811} & 0.872 & 0.813 & 0.737 \\
-lift (CLIP) & vision-language & 0.718 & 0.782 & 0.727 & 0.635 \\
-tip\_adapter & truy hồi & 0.668 & 0.679 & 0.648 & 0.678 \\
-tip\_adapter\_f & truy hồi (FT) & 0.643 & 0.821 & 0.672 & 0.400 \\
-clip\_llm & ngôn ngữ & 0.626 & 0.618 & 0.606 & 0.658 \\
-clip\_zeroshot & --- & 0.627 & 0.638 & 0.605 & 0.638 \\
-\texttt{cmo} (đối chứng) & nội tại & 0.462 & 0.614 & 0.443 & 0.307 \\
+\textbf{Fusion (greedy)} & gộp & \textbf{0.823} & \textbf{0.755} & \textbf{0.849} & \textbf{0.864} \\
+Fusion (theo nhóm-shot) & gộp & 0.820 & 0.753 & 0.846 & 0.854 \\
+\textbf{DINOv2-LIFT} & thị giác thứ hai & 0.811 & 0.737 & 0.841 & 0.859 \\
+LIFT (CLIP) & vision-language & 0.718 & 0.635 & 0.670 & 0.593 \\
+Tip-Adapter & truy hồi & 0.668 & 0.678 & 0.565 & 0.516 \\
+Tip-Adapter-F & truy hồi (FT) & 0.643 & 0.400 & 0.649 & 0.529 \\
+CLIP-LLM & ngôn ngữ & 0.626 & 0.658 & 0.484 & 0.466 \\
+CLIP zero-shot & --- & 0.627 & 0.638 & 0.460 & 0.445 \\
+CMO (đối chứng) & nội tại & 0.462 & 0.307 & 0.195 & 0.120 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Hình~\ref{fig:fewshot-progression} trực quan hoá thông điệp cốt lõi: few-shot accuracy \emph{tăng
-đơn điệu} qua bốn mốc đại diện cho mạch tiếp cận.
+% Hình~\ref{fig:fewshot-progression} trực quan hoá thông điệp cốt lõi trên CIFAR: few-shot accuracy
+% \emph{tăng đơn điệu} qua các mốc đại diện cho mạch tiếp cận.
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  ybar, width=0.85\textwidth, height=6cm,
-  bar width=20pt,
-  ymin=0, ymax=0.85,
-  ylabel={Few-shot accuracy (đuôi)},
-  symbolic x coords={baseline,cmo,CLIP-zeroshot,LIFT-CLIP,DINOv2-LIFT,fusion},
-  xtick=data, x tick label style={rotate=20, anchor=east, font=\small},
-  nodes near coords, nodes near coords style={font=\scriptsize},
-  enlarge x limits=0.12,
-]
-\addplot[fill=blue!40] coordinates {
-  (baseline,0.079) (cmo,0.299) (CLIP-zeroshot,0.638) (LIFT-CLIP,0.635) (DINOv2-LIFT,0.737) (fusion,0.755)
-};
-\end{axis}
-\end{tikzpicture}
-\caption{CIFAR-100-LT: few-shot accuracy tăng đơn điệu từ baseline ($0.079$) $\to$ cmo (trần
-from-scratch, $0.299$) $\to$ track tri thức ngoài (CLIP $0.638$, LIFT, DINOv2 $0.737$, fusion
-$0.755$). Đuôi được cứu chủ yếu nhờ \emph{mượn tri thức ngoài}.}
-\label{fig:fewshot-progression}
-\end{figure}
-
-\section{Kết quả định lượng trên CUB-200-LT (fine-grained)}
-
-Trên miền fine-grained khó hơn, khoảng cách giữa hai track còn nới rộng thêm
-(Bảng~\ref{tab:cub-foundation}). Huấn luyện-từ-đầu gần như vô dụng, với balanced accuracy chỉ quanh
-mức $0.20$--$0.27$ (cmo $0.195$, baseline $0.258$), trong khi track nền tảng đạt $\mathbf{0.85}$ ---
-một bằng chứng mạnh cho thấy \emph{tri thức ngoài là thiết yếu} khi dữ liệu vừa ít vừa khó. Một lần
-nữa \texttt{dino\_lift} ($0.841$) bỏ xa LIFT-CLIP ($0.670$), thậm chí còn mạnh hơn so với trên
-CIFAR; điều này phù hợp với việc DINOv2 (patch nhỏ $14$, tự giám sát) bắt chi tiết fine-grained rất
-tốt.
-
-\begin{table}[H]
-\centering
-\caption{CUB-200-LT --- Track 3, thích nghi mô hình nền tảng (\texttt{comparison.csv}).}
-\label{tab:cub-foundation}
-\begin{tabular}{llcccc}
-\toprule
-\textbf{Expert} & \textbf{Nguồn tri thức} & \textbf{bal-acc} & \textbf{many} & \textbf{medium} & \textbf{few} \\
-\midrule
-\textbf{fusion\_greedy} & gộp & \textbf{0.849} & 0.858 & 0.824 & \textbf{0.864} \\
-fusion\_tailaware & gộp & 0.846 & 0.859 & 0.824 & 0.854 \\
-\textbf{dino\_lift} & thị giác thứ hai & \textbf{0.841} & 0.851 & 0.812 & 0.859 \\
-lift (CLIP) & vision-language & 0.670 & 0.741 & 0.650 & 0.593 \\
-tip\_adapter\_f & truy hồi (FT) & 0.649 & 0.758 & 0.623 & 0.529 \\
-tip\_adapter & truy hồi & 0.565 & 0.637 & 0.521 & 0.516 \\
-clip\_llm & ngôn ngữ & 0.484 & 0.518 & 0.458 & 0.466 \\
-clip\_zeroshot & --- & 0.460 & 0.494 & 0.433 & 0.445 \\
-\texttt{cmo} (đối chứng) & nội tại & 0.195 & 0.256 & 0.186 & 0.120 \\
-\bottomrule
-\end{tabular}
-\end{table}
+% \begin{figure}[H]
+% \centering
+% \begin{tikzpicture}
+% \begin{axis}[
+%   ybar, width=0.85\textwidth, height=6cm,
+%   bar width=20pt,
+%   ymin=0, ymax=0.85,
+%   ylabel={Few-shot accuracy (đuôi)},
+%   symbolic x coords={Baseline,CMO,CLIP-zeroshot,LIFT-CLIP,DINOv2-LIFT,Fusion},
+%   xtick=data, x tick label style={rotate=20, anchor=east, font=\small},
+%   nodes near coords, nodes near coords style={font=\scriptsize},
+%   enlarge x limits=0.12,
+% ]
+% \addplot[fill=blue!40] coordinates {
+%   (Baseline,0.079) (CMO,0.299) (CLIP-zeroshot,0.638) (LIFT-CLIP,0.635) (DINOv2-LIFT,0.737) (Fusion,0.755)
+% };
+% \end{axis}
+% \end{tikzpicture}
+% \caption{CIFAR-100-LT: few-shot accuracy tăng đơn điệu từ Baseline ($0.079$) $\to$ CMO (trần
+% from-scratch, $0.299$) $\to$ track tri thức ngoài (CLIP $0.638$, LIFT, DINOv2 $0.737$, Fusion
+% $0.755$). Đuôi được cứu chủ yếu nhờ \emph{mượn tri thức ngoài}.}
+% \label{fig:fewshot-progression}
+% \end{figure}
 
 \section{Nghiên cứu loại trừ (Ablation Study)}
 
@@ -213,9 +196,9 @@ nhóm.
 & \multicolumn{2}{c}{\textbf{CIFAR-100-LT}} & \multicolumn{2}{c}{\textbf{CUB-200-LT}} \\
 \textbf{Mốc} & bal-acc & few & bal-acc & few \\
 \midrule
-dino\_linear\_probe (Linear $+$ CE) & 0.463 & 0.020 & 0.490 & 0.077 \\
-dino\_linear\_probe\_bs (Linear $+$ Balanced-Softmax) & 0.657 & 0.325 & 0.744 & 0.675 \\
-\textbf{dino\_lift} ($+$adapter $+$cosine init) & \textbf{0.811} & \textbf{0.737} & \textbf{0.841} & \textbf{0.859} \\
+DINOv2 $+$ Linear (CE) & 0.463 & 0.020 & 0.490 & 0.077 \\
+DINOv2 $+$ Linear (Balanced-Softmax) & 0.657 & 0.325 & 0.744 & 0.675 \\
+\textbf{DINOv2-LIFT} ($+$adapter $+$cosine init) & \textbf{0.811} & \textbf{0.737} & \textbf{0.841} & \textbf{0.859} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -223,27 +206,32 @@ dino\_linear\_probe\_bs (Linear $+$ Balanced-Softmax) & 0.657 & 0.325 & 0.744 & 
 \subsection{Ablation B --- độ sâu fine-tune CLIP: fine-tune nặng làm hại đuôi}
 
 Đây là ablation nhằm biện minh cho thiết kế \emph{đóng băng}. Nhóm fine-tune CLIP ở ba độ sâu tăng
-dần --- chỉ head, rồi block cuối, rồi toàn bộ visual encoder --- với Balanced Softmax
-(Bảng~\ref{tab:ablationB}, trên CIFAR). Balanced accuracy có tăng theo độ sâu
-($0.461\to0.536\to0.558$), nhưng few-shot lại tệ đi và luôn ở mức rất thấp (cao nhất chỉ $0.128$).
-So với LIFT \emph{đóng băng} (few-shot $0.635$), mọi cấu hình fine-tune đều thua xa ở đuôi. Kết quả
-này xác nhận đúng luận điểm của LIFT: với 5 ảnh/lớp, việc lan truyền gradient vào backbone gây
-overfit và xói mòn tri thức zero-shot ở các lớp hiếm.
+dần --- chỉ head, rồi block cuối, rồi toàn bộ visual encoder --- với Balanced Softmax, và đối chiếu
+trên cả hai bộ dữ liệu (Bảng~\ref{tab:ablationB}). Trên CIFAR, balanced accuracy có tăng theo độ sâu
+($0.461\to0.536\to0.558$) nhưng few-shot lại tệ đi và luôn ở mức rất thấp (cao nhất chỉ $0.128$);
+G-mean của các cấu hình này chỉ cỡ $0.004$--$0.007$, cho thấy rất nhiều lớp tail bị ``chết''. Trên
+CUB, hiện tượng còn rõ hơn: fine-tune \emph{toàn bộ} encoder thậm chí cho bal-acc thấp nhất
+($0.411$, dưới cả linear-probe $0.438$). So với LIFT \emph{đóng băng} (few-shot $0.635$ / $0.593$),
+mọi cấu hình fine-tune đều thua xa ở đuôi trên cả hai bộ. Kết quả xác nhận đúng luận điểm của LIFT:
+với 5 ảnh/lớp, lan truyền gradient vào backbone gây overfit và xói mòn tri thức zero-shot ở các lớp
+hiếm.
 
 \begin{table}[H]
 \centering
-\caption{Ablation B trên CIFAR-100-LT: độ sâu fine-tune CLIP (Balanced Softmax). G-mean rất nhỏ cho
-thấy nhiều lớp tail bị ``chết''.}
+\caption{Ablation B --- độ sâu fine-tune CLIP (Balanced Softmax), đối chiếu hai bộ dữ liệu. Fine-tune
+càng sâu, đuôi càng tệ; LIFT đóng băng vượt trội.}
 \label{tab:ablationB}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Cấu hình} & \textbf{bal-acc} & \textbf{many} & \textbf{few} & \textbf{G-mean} \\
+ & \multicolumn{2}{c}{\textbf{CIFAR-100-LT}} & \multicolumn{2}{c}{\textbf{CUB-200-LT}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+\textbf{Cấu hình} & bal-acc & few & bal-acc & few \\
 \midrule
-ft\_linear\_probe & 0.461 & 0.785 & 0.086 & 0.004 \\
-ft\_last\_block & 0.536 & 0.850 & 0.128 & 0.005 \\
-ft\_full\_ft & 0.558 & 0.874 & 0.111 & 0.007 \\
+Chỉ head (linear probe) & 0.461 & 0.086 & 0.438 & 0.146 \\
+Head $+$ block cuối & 0.536 & 0.128 & 0.548 & 0.266 \\
+Toàn bộ visual encoder & 0.558 & 0.111 & 0.411 & 0.084 \\
 \midrule
-\textbf{lift (đóng băng)} & \textbf{0.718} & 0.782 & \textbf{0.635} & \textbf{0.697} \\
+\textbf{LIFT (đóng băng)} & \textbf{0.718} & \textbf{0.635} & \textbf{0.670} & \textbf{0.593} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -251,8 +239,8 @@ ft\_full\_ft & 0.558 & 0.874 & 0.111 & 0.007 \\
 \subsection{Augment đặc trưng: sinh dữ liệu và mixup không giúp}
 
 Khi so sánh ba biến thể trên cùng nền LIFT-CLIP (Bảng~\ref{tab:augment}), cả \emph{sinh đặc trưng
-bằng diffusion} (\texttt{lift\_clip\_diff}) lẫn \emph{feature mixup} (\texttt{lift\_clip\_mixup}) đều
-\emph{thấp hơn} LIFT-CLIP gốc trên \emph{cả hai} dataset. Đây là một kết quả âm trung thực: khi đặc
+bằng diffusion} lẫn \emph{feature mixup} đều \emph{thấp hơn} LIFT-CLIP gốc trên \emph{cả hai}
+dataset. Đây là một kết quả âm trung thực: khi đặc
 trưng nền tảng đã đủ mạnh, việc augment thêm chủ yếu đưa vào nhiễu thay vì thông tin mới. Riêng
 diffusion còn làm tail tệ đi rõ rệt trên CIFAR (few $0.505$).
 
@@ -264,37 +252,37 @@ diffusion còn làm tail tệ đi rõ rệt trên CIFAR (few $0.505$).
 \toprule
 \textbf{Phương pháp} & \textbf{CIFAR-100-LT} & \textbf{CUB-200-LT} \\
 \midrule
-lift\_clip (gốc) & \textbf{0.717} & \textbf{0.670} \\
-lift\_clip\_mixup (feature mixup) & 0.698 & 0.654 \\
-lift\_clip\_diff (diffusion) & 0.675 & 0.655 \\
+LIFT-CLIP (gốc) & \textbf{0.717} & \textbf{0.670} \\
+LIFT-CLIP $+$ feature mixup & 0.698 & 0.654 \\
+LIFT-CLIP $+$ diffusion & 0.675 & 0.655 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\section{Kết quả định tính}
+% \section{Kết quả định tính}
 
-Một ``slide demo đuôi'' điển hình minh hoạ rất rõ giá trị của tri thức ngoài: với một ảnh thuộc lớp
-hiếm, mô hình thị giác from-scratch thường dự đoán sai (gán nhầm sang một lớp head trông tương tự),
-trong khi LIFT/DINOv2 --- nhờ khởi tạo ngữ nghĩa và loss nhận-biết-đuôi --- lại dự đoán đúng. Các
-trường hợp như vậy cho thấy bằng trực giác vì sao tri thức ngoài cứu được đuôi. Những hình tương ứng
-(confusion matrix, t-SNE của đặc trưng) được sinh ra từ pipeline đánh giá và có thể chèn vào các vị
-trí dưới đây.
+% Một ``slide demo đuôi'' điển hình minh hoạ rất rõ giá trị của tri thức ngoài: với một ảnh thuộc lớp
+% hiếm, mô hình thị giác from-scratch thường dự đoán sai (gán nhầm sang một lớp head trông tương tự),
+% trong khi LIFT/DINOv2 --- nhờ khởi tạo ngữ nghĩa và loss nhận-biết-đuôi --- lại dự đoán đúng. Các
+% trường hợp như vậy cho thấy bằng trực giác vì sao tri thức ngoài cứu được đuôi. Những hình tương ứng
+% (confusion matrix, t-SNE của đặc trưng) được sinh ra từ pipeline đánh giá và có thể chèn vào các vị
+% trí dưới đây.
 
-\begin{figure}[H]
-\centering
-\fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering \texttt{[FIGURE: qualitative\_results]}\\[2pt]
-\small Ví dụ dự đoán trên lớp tail: vision (sai) vs CLIP/LIFT/DINOv2 (đúng).}}
-\caption{Phân tích định tính trên các lớp đuôi (placeholder --- chèn ảnh từ pipeline đánh giá).}
-\label{fig:qualitative}
-\end{figure}
+% \begin{figure}[H]
+% \centering
+% \fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering [Hình minh hoạ: kết quả định tính]\\[2pt]
+% \small Ví dụ dự đoán trên lớp tail: vision (sai) vs CLIP/LIFT/DINOv2 (đúng).}}
+% \caption{Phân tích định tính trên các lớp đuôi (placeholder --- chèn ảnh từ pipeline đánh giá).}
+% \label{fig:qualitative}
+% \end{figure}
 
-\begin{figure}[H]
-\centering
-\fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering \texttt{[FIGURE: confusion\_matrix\_comparison]}\\[2pt]
-\small Confusion matrix chuẩn hoá: baseline (tail ``chết'') vs dino\_lift (tail sống).}}
-\caption{So sánh confusion matrix: phương pháp từ đầu bỏ rơi đuôi, track nền tảng phân bố đều hơn.}
-\label{fig:confmat}
-\end{figure}
+% \begin{figure}[H]
+% \centering
+% \fbox{\parbox[c][3.2cm][c]{0.8\textwidth}{\centering [Hình minh hoạ: so sánh confusion matrix]\\[2pt]
+% \small Confusion matrix chuẩn hoá: Baseline (tail ``chết'') vs DINOv2-LIFT (tail sống).}}
+% \caption{So sánh confusion matrix: phương pháp từ đầu bỏ rơi đuôi, track nền tảng phân bố đều hơn.}
+% \label{fig:confmat}
+% \end{figure}
 
 \section{Thảo luận}
 
@@ -303,11 +291,11 @@ trí dưới đây.
   \item \textbf{Tri thức ngoài là bước nhảy quyết định.} Trên CIFAR, kết quả đi từ from-scratch
         $0.47$ lên nền tảng $0.82$; trên CUB là từ $0.20$--$0.27$ lên $0.85$. Chênh lệch càng lớn ở
         miền khó (fine-grained CUB), nơi học-từ-đầu gần như thất bại.
-  \item \textbf{Nguồn cứu đuôi nhất là mô hình nền tảng thị giác thứ hai (DINOv2).} \texttt{dino\_lift}
+  \item \textbf{Nguồn cứu đuôi nhất là mô hình nền tảng thị giác thứ hai (DINOv2).} DINOv2-LIFT
         vượt LIFT-CLIP ở cả hai dataset ($0.811$ vs $0.718$; $0.841$ vs $0.670$) và là trụ cột của
         fusion. DINOv2 được huấn luyện tự giám sát với patch $14$, nên bắt chi tiết fine-grained tốt
         hơn CLIP ViT-B/32 ở ảnh nhỏ.
-  \item \textbf{Ngôn ngữ (LLM) giúp ít.} \texttt{clip\_llm} gần như ngang \texttt{clip\_zeroshot}
+  \item \textbf{Ngôn ngữ (LLM) giúp ít.} CLIP-LLM gần như ngang CLIP zero-shot
         (CIFAR $0.626$ vs $0.627$; CUB $0.484$ vs $0.460$, chỉ nhích nhẹ). Mô tả giàu không bù được
         hạn chế của CLIP ViT-B/32 ở ảnh nhỏ và dữ liệu fine-grained.
   \item \textbf{Sinh dữ liệu và mixup không giúp} (cả hai dataset đều thấp hơn LIFT-CLIP gốc): khi
@@ -315,9 +303,10 @@ trí dưới đây.
   \item \textbf{Đóng góp của pipeline đo được rõ ràng} (Ablation A): chỉ riêng Balanced Softmax đã
         cứu đuôi từ $\sim0.02$ lên $0.33$ (CIFAR) và từ $0.08$ lên $0.68$ (CUB); thêm adapter cùng
         cosine init đẩy tiếp lên $0.74$/$0.86$.
-  \item \textbf{Fine-tune nặng làm hại đuôi} (Ablation B): full-FT cho few-shot $0.111$ so với LIFT
-        đóng băng $0.635$ --- một biện minh trực tiếp cho thiết kế đóng băng.
-  \item \textbf{Bù trừ có nhưng ở mức nhẹ và an toàn.} \texttt{fusion\_greedy} vượt expert đơn tốt
+  \item \textbf{Fine-tune nặng làm hại đuôi} (Ablation B): trên CIFAR, full-FT cho few-shot $0.111$
+        so với LIFT đóng băng $0.635$; trên CUB, full-FT còn cho bal-acc thấp nhất ($0.411$) --- một
+        biện minh trực tiếp cho thiết kế đóng băng trên cả hai bộ.
+  \item \textbf{Bù trừ có nhưng ở mức nhẹ và an toàn.} Fusion (greedy) vượt expert đơn tốt
         nhất ở cả hai dataset ($0.823>0.811$; $0.849>0.841$) mà không tụt ở nhóm nào, vì greedy bảo
         đảm $\ge$ best-single trên validation cho từng nhóm.
 \end{enumerate}
@@ -327,12 +316,11 @@ Về điểm mạnh, nghiên cứu có một khung thống nhất, đa-dataset, 
 nghiêm ngặt; các kết luận nhất quán trên hai miền và hai quy mô lớp; có ablation tách bạch đóng góp
 và trung thực với cả các kết quả âm.
 
-Để bảo đảm minh bạch, nhóm cũng nêu rõ hai ghi chú thực nghiệm (caveat) liên quan đến \emph{breakdown},
-vốn không ảnh hưởng tới balanced accuracy hay các kết luận. Thứ nhất, \emph{CIFAR Phase 0} chạy trên
-một bộ checkpoint cho số mô hình-đơn cao hơn leaderboard from-scratch (có thể do
-\texttt{pretrained=True}), nên Bảng~\ref{tab:cifar-phase0} chỉ nên xem là minh hoạ kỹ thuật reuse,
-không so trực tiếp con số với Track 1/3. Thứ hai, \emph{CUB from-scratch} được chấm khi ngưỡng
-nhóm-shot còn ở mặc định ($100/20$), nên nhóm \emph{many} rỗng và cột many/medium/few của riêng nhóm
-này \emph{không hợp lệ}; tuy vậy balanced accuracy không phụ thuộc cách chia nhóm nên vẫn đúng, và
-track nền tảng (Bảng~\ref{tab:cub-foundation}) đã dùng đúng ngưỡng $20/10$. Cả hai điểm này chỉ liên
-quan đến breakdown; balanced accuracy và mọi kết luận đều được giữ nguyên.
+Để bảo đảm minh bạch, nhóm nêu rõ một ghi chú thực nghiệm liên quan đến \emph{breakdown} (không ảnh
+hưởng tới balanced accuracy hay các kết luận): nhóm from-scratch trên CUB (Bảng~\ref{tab:scratch})
+được chấm khi ngưỡng nhóm-shot còn ở mặc định ($100/20$) --- với CUB chỉ có tối đa $50$ ảnh/lớp,
+nhóm \emph{many} trở nên rỗng nên cách chia many/medium/few không hợp lệ. Vì balanced accuracy không
+phụ thuộc cách chia nhóm nên vẫn dùng để so sánh được, còn cột few của CUB từ-đầu chỉ mang tính tham
+khảo; track nền tảng (Bảng~\ref{tab:foundation}) đã dùng đúng ngưỡng $20/10$. Một điểm tích cực về
+tính nhất quán: bảng tái dùng ở Track 2 (Bảng~\ref{tab:reuse}) được tính trên đúng các checkpoint
+từ-đầu (không phải bản tiền huấn luyện), nên các con số nằm khớp giữa Track 1 và Track 3.
