@@ -1,0 +1,13 @@
+{
+  "accuracy": 0.4607,
+  "balanced_accuracy": 0.4607,
+  "macro_precision": 0.5451771302682705,
+  "macro_recall": 0.4607,
+  "macro_f1": 0.4194315393099091,
+  "weighted_f1": 0.419431539309909,
+  "g_mean": 0.14456634601773846,
+  "mcc": 0.45707282512637154,
+  "many_shot_accuracy": 0.7502857142857141,
+  "medium_shot_accuracy": 0.4511428571428572,
+  "few_shot_accuracy": 0.13399999999999998
+}
